@@ -10,15 +10,15 @@ import SemiSecs
 
 struct SECS2BodyTest {
 
-    @Test func testSECS2Body1() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func testSECS2BodyBinary() async throws {
         
-        let ss = SECS2Body(binary: [0x00, 0x01])
+        let secs2Body = SECS2Body(binary: [0x00, 0x01])
         
-        #expect(ss.itemType == .binary)
-        #expect(ss.count == 2)
-        
-        
+        #expect(secs2Body.itemType == .binary)
+        #expect(secs2Body.count == 2)
+        #expect(secs2Body.getUInt8(0) == 0x00)
+        #expect(secs2Body.getUInt8(1) == 0x01)
+
     }
     
 }

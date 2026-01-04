@@ -242,10 +242,10 @@ public struct HSMSMessage: SECSMessage {
     
     
     private let header10BytesData: Data
-    public private(set) var secs2Body: SECS2Body
+    public private(set) var secs2Body: SECS2Body?
     
     public var data: Data {
-        let r = self.header10BytesData + self.secs2Body.data
+        let r = self.header10BytesData + (self.secs2Body?.data ?? Data())
         let i = r.count
         return Data([
             UInt8((i >> 24) & 0x000000FF),
@@ -268,7 +268,7 @@ public struct HSMSMessage: SECSMessage {
     }
     
     public var count: Int {
-        return self.header10BytesData.count + self.secs2Body.data.count
+        return self.header10BytesData.count + (self.secs2Body?.data.count ?? 0)
     }
     
     public var header10Bytes: [UInt8] {
@@ -323,8 +323,8 @@ public struct HSMSMessage: SECSMessage {
             if self.wbit {
                 r += " W"
             }
-            if self.secs2Body.isEmpty == false {
-                r += Self.lineSeparator + self.secs2Body.smlString
+            if let secs2BodySmlString = self.secs2Body?.smlString {
+                r += Self.lineSeparator + secs2BodySmlString
             }
             r += Self.endMessage
         }
@@ -370,7 +370,7 @@ public struct HSMSMessage: SECSMessage {
             ref[8],
             ref[9],
         ])
-        self.secs2Body = SECS2Body()
+        self.secs2Body = nil
     }
     
     public init(sessionId2Bytes: [UInt8], messageType: MessageType, system4Bytes: [UInt8]) {
@@ -386,7 +386,7 @@ public struct HSMSMessage: SECSMessage {
             system4Bytes[2],
             system4Bytes[3],
         ])
-        self.secs2Body = SECS2Body()
+        self.secs2Body = nil
     }
     
     public init(hsmsSelectRequest: HSMSMessage, selectStatus: SelectStatus) {
@@ -403,7 +403,7 @@ public struct HSMSMessage: SECSMessage {
             ref[8],
             ref[9],
         ])
-        self.secs2Body = SECS2Body()
+        self.secs2Body = nil
     }
     
     public init(hsmsDeselectRequest: HSMSMessage, deselectStatus: DeselectStatus) {
@@ -420,7 +420,7 @@ public struct HSMSMessage: SECSMessage {
             ref[8],
             ref[9],
         ])
-        self.secs2Body = SECS2Body()
+        self.secs2Body = nil
     }
     
     public init(hsmsLinktestRequest: HSMSMessage) {
@@ -437,7 +437,7 @@ public struct HSMSMessage: SECSMessage {
             ref[8],
             ref[9],
         ])
-        self.secs2Body = SECS2Body()
+        self.secs2Body = nil
     }
     
     public init(hsmsRejectRequest: HSMSMessage, rejectReason: RejectReason, byte2: UInt8) {
@@ -454,7 +454,7 @@ public struct HSMSMessage: SECSMessage {
             ref[8],
             ref[9],
         ])
-        self.secs2Body = SECS2Body()
+        self.secs2Body = nil
     }
     
     public init(originSECSMessage: SECSMessage) {

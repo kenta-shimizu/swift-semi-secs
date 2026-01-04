@@ -8,10 +8,8 @@
 import Foundation
 import Network
 
-@available(macOS 10.15, *)
 public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
     
-    @available(macOS 10.15.0, *)
     internal class HSMSSSMessageBuilder: HSMSMessageBuilder {
         
         internal weak var communicator: HSMSSSCommunicator?
@@ -206,7 +204,6 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         
     }
     
-    @available(macOS 10.15.0, *)
     internal class HSMSSSSession: HSMSSession {
         
         internal weak var communicator: HSMSSSCommunicator?
@@ -240,7 +237,6 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         }
     }
     
-    @available(macOS 10.15, *)
     public struct HSMSSSCommunicatorConfig {
         
         public var ipAddress: NWEndpoint.Host?
@@ -350,7 +346,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         return await self.hsmsSession.asyncSend(hsmsMessage: hsmsMessage)
     }
     
-    public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) throws -> HSMSMessage? {
+    public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws -> HSMSMessage? {
         return try self.hsmsSession.send(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     
@@ -358,7 +354,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         return try self.hsmsSession.send(smlMessage: smlMessage)
     }
     
-    public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) async -> Result<HSMSMessage?, Error> {
+    public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
         return await self.hsmsSession.asyncSend(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     
@@ -366,7 +362,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         return await self.hsmsSession.asyncSend(smlMessage: smlMessage)
     }
     
-    public func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) throws {
+    public func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws {
         try self.hsmsSession.reply(primaryMessage: primaryMessage, stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     
@@ -374,7 +370,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         try self.hsmsSession.reply(primaryMessage: primaryMessage, smlMessage: smlMessage)
     }
     
-    public func asyncReply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) async -> Result<HSMSMessage?, Error> {
+    public func asyncReply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
         return await self.hsmsSession.asyncReply(primaryMessage: primaryMessage, stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     

@@ -26,7 +26,6 @@ public struct SECS2Body: CustomStringConvertible, CustomDebugStringConvertible, 
         case floar4
         case floar8
         
-        case empty
         case error
         case unknown
         
@@ -61,8 +60,6 @@ public struct SECS2Body: CustomStringConvertible, CustomDebugStringConvertible, 
                 return (smlString: "F4", itemTypeByte: 0x90)
             case .floar8:
                 return (smlString: "F8", itemTypeByte: 0x80)
-            case .empty:
-                return (smlString: "EMPTY", itemTypeByte: 0xFF)
             case .error:
                 return (smlString: "ERROR", itemTypeByte: 0xFF)
             case .unknown:
@@ -241,25 +238,6 @@ public struct SECS2Body: CustomStringConvertible, CustomDebugStringConvertible, 
             }
         }
         
-    }
-    
-    private class EmptyValue: ValueBase, @unchecked Sendable {
-        
-        public override init() {
-            super.init()
-        }
-        
-        public override var itemType: ItemType {
-            return .empty
-        }
-        
-        public override var data: Data {
-            return Data()
-        }
-        
-        public override var smlString: String {
-            return ""
-        }
     }
     
     private class ListValue: ValueBase, @unchecked Sendable {
@@ -1005,10 +983,6 @@ public struct SECS2Body: CustomStringConvertible, CustomDebugStringConvertible, 
     
     private let innerValue: ValueBase
     
-    public init() {
-        self.innerValue = EmptyValue()
-    }
-    
     public init(list: [SECS2Body]) {
         guard list.count <= Self.sizeLimit else {
             fatalError("Item size error. size:\(list.count)")
@@ -1120,9 +1094,9 @@ public struct SECS2Body: CustomStringConvertible, CustomDebugStringConvertible, 
         self.innerValue = Float8Value(float8: float8, data: data)
     }
     
-    public init(data: Data) {
+    public init?(data: Data) {
         if data.isEmpty {
-            self.innerValue = EmptyValue()
+            return nil
         } else {
             if let r = Self.decode(data: data, startIndex: 0) {
                 if r.endIndex == data.count {
@@ -1164,10 +1138,6 @@ public struct SECS2Body: CustomStringConvertible, CustomDebugStringConvertible, 
         return self.innerValue.smlString
     }
     
-    public var isEmpty: Bool {
-        return self.data.isEmpty
-    }
-
     public var description: String {
         return self.smlString
     }

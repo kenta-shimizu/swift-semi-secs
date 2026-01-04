@@ -19,9 +19,9 @@ public struct SMLMessage: CustomStringConvertible, Sendable {
     public private(set) var wbit: Bool
     
     /// SECS-II-Body Readonly.
-    public private(set) var secs2Body: SECS2Body
+    public private(set) var secs2Body: SECS2Body?
     
-    public init(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) {
+    public init(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) {
         guard (0...127).contains(stream) else {
             fatalError("stream is in (0...127). stream: \"\(stream)\"")
         }
@@ -31,7 +31,7 @@ public struct SMLMessage: CustomStringConvertible, Sendable {
         self.secs2Body = secs2Body
     }
     
-    private static let lineSeparator: String = "\n"
+    private static let lineSeparator = "\n"
     private static let endMessage = "."
     
     public var description: String {
@@ -39,18 +39,17 @@ public struct SMLMessage: CustomStringConvertible, Sendable {
         if self.wbit {
             r += " W"
         }
-        let secs2BodySmlString = self.secs2Body.smlString
-        if secs2BodySmlString.isEmpty {
-            r += Self.endMessage
-        } else {
+        if let secs2BodySmlString = self.secs2Body?.smlString {
             r += Self.lineSeparator + secs2BodySmlString + Self.endMessage
+        } else {
+            r += Self.endMessage
         }
         return r
     }
 
 }
 
-public enum SMLMessageParseError: Error {
+public enum SMLMessageParseError: Error, Sendable {
     
     case missingFinalPeriod
     case notMatch
@@ -77,20 +76,19 @@ public enum SMLMessageParseError: Error {
     
 }
 
-@available(macOS 13.0, *)
-public final class SMLMessageParser: Sendable {
+open class SMLMessageParser {
     
-    public static let shared = SMLMessageParser()
+    private let _secs2BodyParser = SMLMessageSecs2BodyParser()
     
-    internal var secs2BodyParser: SMLMessageSecs2BodyParser {
-        get { SMLMessageSecs2BodyParser.shared }
+    open var secs2BodyParser: SMLMessageSecs2BodyParser {
+        get { self._secs2BodyParser }
     }
     
-    internal init() {
-        /* Nothing */
+    public init() {
+        // Nothing
     }
     
-    public func parse(_ of: String) -> Result<SMLMessage, SMLMessageParseError> {
+    open func parse(_ of: String) -> Result<SMLMessage, SMLMessageParseError> {
         
         guard of.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(".") else {
             return Result.failure(.missingFinalPeriod)
@@ -117,7 +115,7 @@ public final class SMLMessageParser: Sendable {
         
         let wbit = !(match.output.wbit.isEmpty)
         
-        let secs2Parse = { () -> Result<SECS2Body, SMLMessageParseError> in
+        let secs2Parse = { () -> Result<SECS2Body?, SMLMessageParseError> in
             let secs2BodyString = match.output.secs2body
             return self.secs2BodyParser.parse(string, startIndex: secs2BodyString.startIndex, endIndex: secs2BodyString.endIndex)
         }
@@ -131,39 +129,20 @@ public final class SMLMessageParser: Sendable {
     }
 }
 
-@available(macOS 13.0, *)
-public final class SMLMessageSecs2BodyParser: Sendable {
-    
-//    private let prefixPatternList = /^<\s*L(\s*\[\s*\d+\s*\])?/
-//    private let prefixPatternBinary = /^<\s*B(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private let prefixPatternBoolean = /^<\s*BOOLEAN(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternAscii = /^<\s*A(\s*\[\s*\d+\s*\])?/
-//    private static let wholePatternAscii = /^<\s*A(\s*\[\s*\d+\s*\])?(\s+(?<values>.*))?>$/
-//    private static let prefixPatternInt1 = /^<\s*I1(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternInt2 = /^<\s*I2(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternInt4 = /^<\s*I4(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternInt8 = /^<\s*I8(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternUInt1 = /^<\s*U1(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternUInt2 = /^<\s*U2(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternUInt4 = /^<\s*U4(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternUInt8 = /^<\s*U8(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternFloat4 = /^<\s*F4(\s*\[\s*\d+\s*\])?(\s+(?<values>[^>]+))?>/
-//    private static let prefixPatternFloat8 = /^<\s*F8(\s*\[\s*\d+\s*\])?(\s+(?<values>.+))?\s*>/
-
-    public static let shared = SMLMessageSecs2BodyParser()
+open class SMLMessageSecs2BodyParser {
     
     internal init() {
-        /* Nothing */
+        // Nothing
     }
     
-    internal func parse<T: StringProtocol>(_ string: T) -> Result<SECS2Body, SMLMessageParseError> {
+    internal func parse<T: StringProtocol>(_ string: T) -> Result<SECS2Body?, SMLMessageParseError> {
         return self.parse(String(string), startIndex: string.startIndex, endIndex: string.endIndex)
     }
     
-    internal func parse(_ string: String, startIndex: String.Index, endIndex: String.Index) -> Result<SECS2Body, SMLMessageParseError> {
+    internal func parse(_ string: String, startIndex: String.Index, endIndex: String.Index) -> Result<SECS2Body?, SMLMessageParseError> {
         
         if startIndex == endIndex {
-            return Result.success(SECS2Body())
+            return Result.success(nil)
         }
         
         let result = self.innerParse(string, startIndex: startIndex)
@@ -877,7 +856,7 @@ public final class SMLMessageSecs2BodyParser: Sendable {
         return nil
     }
     
-    public func parseExtraType(_ string: String, startIndex: String.Index) -> Result<(secs2Body: SECS2Body, endIndex: String.Index), SMLMessageParseError>? {
+    open func parseExtraType(_ string: String, startIndex: String.Index) -> Result<(secs2Body: SECS2Body, endIndex: String.Index), SMLMessageParseError>? {
         
         // override if extra type support
         

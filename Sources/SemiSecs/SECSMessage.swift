@@ -20,7 +20,7 @@ public protocol SECSMessage: CustomStringConvertible, CustomDebugStringConvertib
     var wbit: Bool { get }
     
     /// SECS-II-Body, Readonly.
-    var secs2Body: SECS2Body { get }
+    var secs2Body: SECS2Body? { get }
     
     var count: Int { get }
     var header10Bytes: [UInt8] { get }

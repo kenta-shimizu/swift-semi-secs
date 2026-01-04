@@ -47,7 +47,6 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         case selected = "SELECTED"
     }
     
-    @available(macOS 10.15.0, *)
     internal class HSMSMessageBuilder: SECSMessageBuilder {
         
         internal override init() {
@@ -295,7 +294,6 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         }
     }
     
-    @available(macOS 10.15.0, *)
     public class HSMSSession {
         
         private let stateSemaphore = DispatchSemaphore(value: 1)
@@ -438,7 +436,7 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         }
         
         @discardableResult
-        public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) throws -> HSMSMessage? {
+        public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws -> HSMSMessage? {
             return try self.send(smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
         }
         
@@ -456,7 +454,7 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         }
         
         @discardableResult
-        public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) async -> Result<HSMSMessage?, Error> {
+        public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
             return await self.asyncSend(smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
         }
         
@@ -465,7 +463,7 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
             return await self.asyncSend(hsmsMessage: self.messageBuilder.buildData(hsmsSession: self, smlMessage: smlMessage))
         }
         
-        public func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) throws {
+        public func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws {
             try self.reply(primaryMessage: primaryMessage, smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
         }
         
@@ -474,7 +472,7 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         }
         
         @discardableResult
-        public func asyncReply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body = SECS2Body()) async -> Result<HSMSMessage?, Error> {
+        public func asyncReply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
             
             return await self.asyncReply(primaryMessage: primaryMessage, smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
         }

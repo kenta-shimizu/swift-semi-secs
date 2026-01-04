@@ -4,6 +4,9 @@ import PackageDescription
 
 let package = Package(
     name: "swift-semi-secs",
+    platforms: [
+        .macOS(.v13)
+    ],
     products: [
         .library(
             name: "SemiSecs",
