@@ -106,16 +106,16 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
     
     public struct SECSCommunicatorTimeoutConfig {
         
-        private var _t1: Double
-        private var _t2: Double
-        private var _t3: Double
-        private var _t4: Double
-        private var _t5: Double
-        private var _t6: Double
-        private var _t7: Double
-        private var _t8: Double
+        private var _t1: TimeInterval
+        private var _t2: TimeInterval
+        private var _t3: TimeInterval
+        private var _t4: TimeInterval
+        private var _t5: TimeInterval
+        private var _t6: TimeInterval
+        private var _t7: TimeInterval
+        private var _t8: TimeInterval
         
-        public var t1: Double {
+        public var t1: TimeInterval {
             get {
                 return self._t1
             }
@@ -126,7 +126,8 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
                 self._t1 = newValue
             }
         }
-        public var t2: Double {
+        
+        public var t2: TimeInterval {
             get {
                 return self._t2
             }
@@ -137,7 +138,8 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
                 self._t2 = newValue
             }
         }
-        public var t3: Double {
+        
+        public var t3: TimeInterval {
             get {
                 return self._t3
             }
@@ -148,7 +150,8 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
                 self._t3 = newValue
             }
         }
-        public var t4: Double {
+        
+        public var t4: TimeInterval {
             get {
                 return self._t4
             }
@@ -159,7 +162,8 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
                 self._t4 = newValue
             }
         }
-        public var t5: Double {
+        
+        public var t5: TimeInterval {
             get {
                 return self._t5
             }
@@ -170,7 +174,8 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
                 self._t5 = newValue
             }
         }
-        public var t6: Double {
+        
+        public var t6: TimeInterval {
             get {
                 return self._t6
             }
@@ -181,7 +186,8 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
                 self._t6 = newValue
             }
         }
-        public var t7: Double {
+        
+        public var t7: TimeInterval {
             get {
                 return self._t7
             }
@@ -192,7 +198,8 @@ public class SECSCommunicator<T: SECSMessage>: ShutdownableBase {
                 self._t7 = newValue
             }
         }
-        public var t8: Double {
+        
+        public var t8: TimeInterval {
             get {
                 return self._t8
             }

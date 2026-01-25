@@ -76,7 +76,8 @@ internal final class BlockingQueue<T>: ShutdownableBase, @unchecked Sendable {
     }
     
     @discardableResult
-    internal func poll(timeout: Double) throws(ShutdownError) -> T? {
+    internal func poll(timeout: TimeInterval
+    ) throws(ShutdownError) -> T? {
         self.condition.lock()
         defer {
             self.condition.unlock()

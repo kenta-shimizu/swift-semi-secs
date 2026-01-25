@@ -1,5 +1,5 @@
 //
-//  SMLMessageTest.swift
+//  SMLMessageTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/01/03.
@@ -8,7 +8,7 @@
 import Testing
 import SemiSecs
 
-struct SMLMessageTest {
+struct SMLMessageTests {
 
     @Test func testSMLMessage() async throws {
         

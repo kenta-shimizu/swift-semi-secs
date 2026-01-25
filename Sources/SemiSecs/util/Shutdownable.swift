@@ -11,11 +11,11 @@ public protocol Shutdownable {
     func shutdown()
 }
 
+internal enum ShutdownError: Error, Sendable {
+    case alreadyShutdowned
+}
+
 public class ShutdownableBase: Shutdownable {
-    
-    internal enum ShutdownError: Error, Sendable {
-        case alreadyShutdowned
-    }
     
     internal var shutdowned: Bool
     internal var shutdownables: [Shutdownable]

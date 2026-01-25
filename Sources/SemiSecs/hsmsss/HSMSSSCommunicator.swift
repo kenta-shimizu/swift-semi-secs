@@ -106,7 +106,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                     throw error
                 }
             }
-            catch _ as ShutdownableBase.ShutdownError {
+            catch _ as ShutdownError {
                 
                 #warning("TODO")
                 
@@ -140,7 +140,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                     }
                 }
             }
-            catch _ as ShutdownableBase.ShutdownError {
+            catch _ as ShutdownError {
                 
                 #warning("TODO")
                 
@@ -259,8 +259,8 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         public var isEquipment: Bool
         public var timeout: SECSCommunicatorTimeoutConfig = SECSCommunicatorTimeoutConfig()
         
-        private var _rebindTimeIntervalIfPassiveMode: Double
-        public var rebindTimeIntervalIfPassiveMode: Double {
+        private var _rebindTimeIntervalIfPassiveMode: TimeInterval
+        public var rebindTimeIntervalIfPassiveMode: TimeInterval {
             get {
                 return self._rebindTimeIntervalIfPassiveMode
             }
@@ -274,8 +274,8 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         
         public var doLinktest: Bool
         
-        private var _linktestCycle: Double
-        public var linktestCycle: Double {
+        private var _linktestCycle: TimeInterval
+        public var linktestCycle: TimeInterval {
             get {
                 return self._linktestCycle
             }
