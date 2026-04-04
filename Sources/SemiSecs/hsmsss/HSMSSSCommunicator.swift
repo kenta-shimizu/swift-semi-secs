@@ -10,64 +10,6 @@ import Network
 
 public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
     
-    internal class HSMSSSMessageBuilder: HSMSMessageBuilder {
-        
-        internal weak var communicator: HSMSSSCommunicator?
-        
-        internal override init() {
-            self.communicator = nil
-            super.init()
-        }
-        
-        private func sessionId2Bytes(_ hsmsSession: HSMSSession) -> [UInt8] {
-            let i = hsmsSession.sessionId
-            return [
-                UInt8((i >> 8) & 0x000000FF),
-                UInt8(i & 0x000000FF)
-            ]
-        }
-        
-        private func system4Bytes(_ hsmsSession: HSMSSession) -> [UInt8] {
-            let isEquip = self.communicator!.config.isEquipment
-            return (isEquip ? self.sessionId2Bytes(hsmsSession) : [0x00, 0x00]) + super.incrementAndGetSystemLower2Bytes
-        }
-        
-        internal override func buildSelectRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            return HSMSMessage(sessionId2Bytes: [0xFF, 0xFF],
-                               messageType: .selectRequest,
-                               system4Bytes: self.system4Bytes(hsmsSession))
-        }
-        
-        internal override func buildDeselectRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            return HSMSMessage(sessionId2Bytes: [0xFF, 0xFF],
-                               messageType: .deselectRequest,
-                               system4Bytes: self.system4Bytes(hsmsSession))
-        }
-        
-        internal override func buildLinktestRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            return HSMSMessage(sessionId2Bytes: [0xFF, 0xFF],
-                               messageType: .linktestRequest,
-                               system4Bytes: self.system4Bytes(hsmsSession))
-        }
-        
-        internal override func buildSeparateRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            return HSMSMessage(sessionId2Bytes: [0xFF, 0xFF],
-                               messageType: .separateRequest,
-                               system4Bytes: self.system4Bytes(hsmsSession))
-        }
-        
-        internal override func buildData(hsmsSession: HSMSSession, smlMessage: SMLMessage) -> HSMSMessage {
-            return HSMSMessage(sessionId2Bytes: self.sessionId2Bytes(hsmsSession),
-                               smlMessage: smlMessage,
-                               system4Bytes: self.system4Bytes(hsmsSession))
-        }
-        
-        internal override func buildData(primaryMessage: SECSMessage, smlMessage: SMLMessage) -> HSMSMessage {
-            return HSMSMessage(primaryMessage: primaryMessage, smlMessage: smlMessage)
-        }
-        
-    }
-    
     internal class HSMSSSMessageTransaction: HSMSMessageTransaction, @unchecked Sendable {
         
         private weak var communicator: HSMSSSCommunicator?
@@ -217,7 +159,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
             return self.communicator!.config.sessionId
         }
         
-        internal override var messageBuilder: HSMSMessageBuilder {
+        internal override var messageBuilder: any HSMSMessageBuildable {
             return self.communicator!.messageBuilder
         }
         
@@ -313,7 +255,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         self.isDidStart = false
         self.isDidCancel = false
         super.init(label: label)
-        self.messageBuilder.communicator = self
+        self.messageBuilder.isEquipmentDelegate = {
+            return self.config.isEquipment
+        }
         self.hsmsSession.communicator = self;
     }
     
@@ -346,35 +290,35 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         return await self.hsmsSession.asyncSend(hsmsMessage: hsmsMessage)
     }
     
-    public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws -> HSMSMessage? {
+    public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) throws -> HSMSMessage? {
         return try self.hsmsSession.send(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     
-    public func send(smlMessage: SMLMessage) throws -> HSMSMessage? {
+    public func send(smlMessage: inout SMLMessage) throws -> HSMSMessage? {
         return try self.hsmsSession.send(smlMessage: smlMessage)
     }
     
-    public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
+    public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) async -> Result<HSMSMessage?, Error> {
         return await self.hsmsSession.asyncSend(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     
-    public func asyncSend(smlMessage: SMLMessage) async -> Result<HSMSMessage?, Error> {
+    public func asyncSend(smlMessage: inout SMLMessage) async -> Result<HSMSMessage?, Error> {
         return await self.hsmsSession.asyncSend(smlMessage: smlMessage)
     }
     
-    public func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws {
+    public func reply(primaryMessage: inout HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) throws {
         try self.hsmsSession.reply(primaryMessage: primaryMessage, stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     
-    public func reply(primaryMessage: SECSMessage, smlMessage: SMLMessage) throws {
+    public func reply(primaryMessage: inout HSMSMessage, smlMessage: inout SMLMessage) throws {
         try self.hsmsSession.reply(primaryMessage: primaryMessage, smlMessage: smlMessage)
     }
     
-    public func asyncReply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
+    public func asyncReply(primaryMessage: inout HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) async -> Result<HSMSMessage?, Error> {
         return await self.hsmsSession.asyncReply(primaryMessage: primaryMessage, stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
     }
     
-    public func asyncReply(primaryMessage: SECSMessage, smlMessage: SMLMessage) async -> Result<HSMSMessage?, Error> {
+    public func asyncReply(primaryMessage: HSMSMessage, smlMessage: SMLMessage) async -> Result<HSMSMessage?, Error> {
         return await self.hsmsSession.asyncReply(primaryMessage: primaryMessage, smlMessage: smlMessage)
     }
     
@@ -704,7 +648,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
             // receiving HSMS-Message
             do {
                 while !self.alreadyConnectionDidCancel {
-                    let message = try receiveHSMSMessageQueue.take()
+                    var message = try receiveHSMSMessageQueue.take()
                     
                     switch message.messageType {
                     case .data:
@@ -712,15 +656,15 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                     case .selectRequest:
                         try self.hsmsSession.replySelectResponse(primaryMessage: message, status: .actived)
                     case .selectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
                     case .deselectRequest:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
                     case .deselectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
                     case .linktestRequest:
-                        try self.hsmsSession.replyLinktestResponse(primaryMessage: message)
+                        try self.hsmsSession.replyLinktestResponse(primaryMessage: &message)
                     case .linktestResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
                     case .rejectRequest:
                         /* Nothing */
                         break
@@ -729,9 +673,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                         return
                     default:
                         if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
+                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
                         } else {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .notSupportTypeP, byte2: message.header10Bytes[4])
+                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeP, byte2: message.header10Bytes[4])
                         }
                     }
                 }
@@ -930,25 +874,30 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                     
                     switch message.messageType {
                     case .data:
-                        try transaction.send(message: self.messageBuilder.buildRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5]))
+                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try transaction.send(message: msg)
                     case .selectRequest:
                         if self.hsmsSession.trySet(transaction: transaction) {
                             self.hsmsSession.set(connectionState: .selected)
                             try self.hsmsSession.replySelectResponse(primaryMessage: message, status: .success)
                             break selectRequestLoop
                         } else {
-                            try transaction.send(message: self.messageBuilder.buildSelectResponse(primaryMessage: message, status: .alreadyUsed))
+                            try transaction.send(message: self.messageBuilder.buildSelectResponse(selectRequest: message, selectStatus: .alreadyUsed))
                         }
                     case .selectResponse:
-                        try transaction.send(message: self.messageBuilder.buildRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5]))
+                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try transaction.send(message: msg)
                     case .deselectRequest:
-                        try transaction.send(message: self.messageBuilder.buildRejectRequest(primaryMessage: message, reason: .notSupportTypeS, byte2: message.header10Bytes[5]))
+                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .notSupportTypeS, byte2: message.header10Bytes[5])
+                        try transaction.send(message: msg)
                     case .deselectResponse:
-                        try transaction.send(message: self.messageBuilder.buildRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5]))
+                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try transaction.send(message: msg)
                     case .linktestRequest:
-                        try transaction.send(message: self.messageBuilder.buildLinktestResponse(primaryMessage: message))
+                        let msg = self.messageBuilder.buildLinktestResponse(linktestRequest: message)
+                        try transaction.send(message: msg)
                     case .linktestResponse:
-                        try transaction.send(message: self.messageBuilder.buildRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5]))
+                        try transaction.send(message: self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5]))
                     case .rejectRequest:
                         /* Nothing */
                         break
@@ -957,9 +906,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                         return
                     default:
                         if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {
-                            try transaction.send(message: self.messageBuilder.buildRejectRequest(primaryMessage: message, reason: .notSupportTypeS, byte2: message.header10Bytes[5]))
+                            try transaction.send(message: self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .notSupportTypeS, byte2: message.header10Bytes[5]))
                         } else {
-                            try transaction.send(message: self.messageBuilder.buildRejectRequest(primaryMessage: message, reason: .notSupportTypeP, byte2: message.header10Bytes[4]))
+                            try transaction.send(message: self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .notSupportTypeP, byte2: message.header10Bytes[4]))
                         }
                     }
                 }
@@ -988,7 +937,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                 }
                 
                 while !self.alreadyConnectionDidCancel {
-                    let message = try receiveHSMSMessageQueue.take()
+                    var message = try receiveHSMSMessageQueue.take()
                     
                     switch message.messageType {
                     case .data:
@@ -996,15 +945,15 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                     case .selectRequest:
                         try self.hsmsSession.replySelectResponse(primaryMessage: message, status: .actived)
                     case .selectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
                     case .deselectRequest:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
                     case .deselectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
                     case .linktestRequest:
-                        try self.hsmsSession.replyLinktestResponse(primaryMessage: message)
+                        try self.hsmsSession.replyLinktestResponse(primaryMessage: &message)
                     case .linktestResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
+                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
                     case .rejectRequest:
                         /* Nothing */
                         break
@@ -1013,9 +962,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                         return
                     default:
                         if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
+                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
                         } else {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: message, reason: .notSupportTypeP, byte2: message.header10Bytes[4])
+                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeP, byte2: message.header10Bytes[4])
                         }
                     }
                 }

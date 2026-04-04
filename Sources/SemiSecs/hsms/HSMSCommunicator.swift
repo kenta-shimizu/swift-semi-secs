@@ -47,58 +47,6 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         case selected = "SELECTED"
     }
     
-    internal class HSMSMessageBuilder: SECSMessageBuilder {
-        
-        internal override init() {
-            super.init()
-        }
-        
-        internal func buildSelectRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            fatalError("Must override")
-        }
-        
-        internal func buildSelectResponse(primaryMessage: HSMSMessage, status: HSMSMessage.SelectStatus) -> HSMSMessage {
-            return HSMSMessage(hsmsSelectRequest: primaryMessage, selectStatus: status)
-        }
-        
-        internal func buildDeselectRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            fatalError("Must override")
-        }
-        
-        internal func buildDeselectResponse(primaryMessage: HSMSMessage, status: HSMSMessage.DeselectStatus) -> HSMSMessage {
-            return HSMSMessage(hsmsDeselectRequest: primaryMessage, deselectStatus: status)
-        }
-        
-        internal func buildLinktestRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            fatalError("Must override")
-        }
-        
-        internal func buildLinktestResponse(primaryMessage: HSMSMessage) -> HSMSMessage {
-            return HSMSMessage(hsmsLinktestRequest: primaryMessage)
-        }
-        
-        internal func buildRejectRequest(primaryMessage: HSMSMessage, reason: HSMSMessage.RejectReason, byte2: UInt8) -> HSMSMessage {
-            return HSMSMessage(hsmsRejectRequest: primaryMessage, rejectReason: reason, byte2: byte2)
-        }
-        
-        internal func buildSeparateRequest(hsmsSession: HSMSSession) -> HSMSMessage {
-            fatalError("Must override")
-        }
-        
-        internal func buildData(hsmsSession: HSMSSession, smlMessage: SMLMessage) -> HSMSMessage {
-            fatalError("Must override")
-        }
-        
-        internal func buildData(primaryMessage: SECSMessage, smlMessage: SMLMessage) -> HSMSMessage {
-            fatalError("Must override")
-        }
-        
-        internal func from(header10BytesData: Data, secs2BodyData: Data) -> HSMSMessage {
-            return HSMSMessage(header10BytesData: header10BytesData, secs2BodyData: secs2BodyData)
-        }
-        
-    }
-    
     internal class HSMSMessageTransaction: SECSMessageTransaction {
         
         internal override init() {
@@ -223,7 +171,8 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
                     bodyBytes.append(data)
                 }
                 
-                try self.hsmsMessageQueue.put(HSMSMessage(header10BytesData: header10Bytes, secs2BodyData: bodyBytes))
+                let message = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: bodyBytes)
+                try self.hsmsMessageQueue.put(message)
             }
         }
     }
@@ -416,7 +365,7 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
             fatalError("must override")
         }
         
-        internal var messageBuilder: HSMSMessageBuilder {
+        internal var messageBuilder: any HSMSMessageBuildable {
             fatalError("Must override")
         }
         
@@ -436,13 +385,14 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         }
         
         @discardableResult
-        public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws -> HSMSMessage? {
-            return try self.send(smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
+        public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) throws -> HSMSMessage? {
+            let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
+            return try self.send(smlMessage: smlMessage)
         }
         
         @discardableResult
         public func send(smlMessage: SMLMessage) throws -> HSMSMessage? {
-            let primaryMessage = self.messageBuilder.buildData(hsmsSession: self, smlMessage: smlMessage)
+            let primaryMessage = self.messageBuilder.buildPrimaryData(sessionId: self.sessionId, smlMessage: smlMessage)
             if let r = try self.send(hsmsMessage: primaryMessage) {
                 if r.messageType == .rejectRequest {
                     throw HSMSError.rejectRequest(primaryMessage: primaryMessage, rejectRequestMessage: r)
@@ -454,75 +404,77 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         }
         
         @discardableResult
-        public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
+        public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) async -> Result<HSMSMessage?, Error> {
+            let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
+            return await self.asyncSend(smlMessage: smlMessage)
         }
         
         @discardableResult
         public func asyncSend(smlMessage: SMLMessage) async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildData(hsmsSession: self, smlMessage: smlMessage))
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildPrimaryData(sessionId: self.sessionId, smlMessage: smlMessage) )
         }
         
-        public func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) throws {
-            try self.reply(primaryMessage: primaryMessage, smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
+        public func reply(primaryMessage: HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) throws {
+            let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
+            try self.reply(primaryMessage: primaryMessage, smlMessage: smlMessage)
         }
         
-        public func reply(primaryMessage: SECSMessage, smlMessage: SMLMessage) throws {
-            try self.send(hsmsMessage: self.messageBuilder.buildData(primaryMessage: primaryMessage, smlMessage: smlMessage))
+        public func reply(primaryMessage: HSMSMessage, smlMessage: SMLMessage) throws {
+            try self.send(hsmsMessage: self.messageBuilder.buildResponseData(primaryMessage: primaryMessage, smlMessage: smlMessage))
         }
         
         @discardableResult
-        public func asyncReply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: SECS2Body? = nil) async -> Result<HSMSMessage?, Error> {
-            
-            return await self.asyncReply(primaryMessage: primaryMessage, smlMessage: SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body))
+        public func asyncReply(primaryMessage: HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) async -> Result<HSMSMessage?, Error> {
+            let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
+            return await self.asyncReply(primaryMessage: primaryMessage, smlMessage: smlMessage)
         }
         
-        public func asyncReply(primaryMessage: SECSMessage, smlMessage: SMLMessage) async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildData(primaryMessage: primaryMessage, smlMessage: smlMessage))
+        public func asyncReply(primaryMessage: HSMSMessage, smlMessage: SMLMessage) async -> Result<HSMSMessage?, Error> {
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildResponseData(primaryMessage: primaryMessage, smlMessage: smlMessage))
         }
         
         
         public func sendSelectRequest() throws -> HSMSMessage? {
-            return try self.send(hsmsMessage: self.messageBuilder.buildSelectRequest(hsmsSession: self))
+            return try self.send(hsmsMessage: self.messageBuilder.buildSelectRequest(sessionId: self.sessionId) )
         }
         
         @discardableResult
         public func asyncSendSelectRequest() async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildSelectRequest(hsmsSession: self))
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildSelectRequest(sessionId: self.sessionId))
         }
         
         public func replySelectResponse(primaryMessage: HSMSMessage, status: HSMSMessage.SelectStatus) throws {
-            try self.send(hsmsMessage: self.messageBuilder.buildSelectResponse(primaryMessage: primaryMessage, status: status))
+            try self.send(hsmsMessage: self.messageBuilder.buildSelectResponse(selectRequest: primaryMessage, selectStatus: status))
         }
         
         @discardableResult
         public func asyncReplySelectResponse(primaryMessage: HSMSMessage, status: HSMSMessage.SelectStatus) async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildSelectResponse(primaryMessage: primaryMessage, status: status))
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildSelectResponse(selectRequest: primaryMessage, selectStatus: status))
         }
         
         @discardableResult
         public func sendDeselectRequest() throws -> HSMSMessage? {
-            return try self.send(hsmsMessage: self.messageBuilder.buildDeselectRequest(hsmsSession: self))
+            return try self.send(hsmsMessage: self.messageBuilder.buildDeselectRequest(sessionId: self.sessionId))
         }
         
         @discardableResult
         public func asyncSendDeselectRequest() async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildDeselectRequest(hsmsSession: self))
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildDeselectRequest(sessionId: self.sessionId))
         }
         
         public func replyDeselectResponse(primaryMessage: HSMSMessage, status: HSMSMessage.DeselectStatus) throws {
-            try self.send(hsmsMessage: self.messageBuilder.buildDeselectResponse(primaryMessage: primaryMessage, status: status))
+            try self.send(hsmsMessage: self.messageBuilder.buildDeselectResponse(deselectRequest: primaryMessage, deselectStatus: status))
         }
         
         @discardableResult
-        public func asyncReplyDeselectResponse(primaryMessage: HSMSMessage, status: HSMSMessage.DeselectStatus) async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildDeselectResponse(primaryMessage: primaryMessage, status: status))
+        public func asyncReplyDeselectResponse(primaryMessage: inout HSMSMessage, status: HSMSMessage.DeselectStatus) async -> Result<HSMSMessage?, Error> {
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildDeselectResponse(deselectRequest: primaryMessage, deselectStatus: status))
         }
         
         @discardableResult
         public func sendLinktestRequest() throws -> HSMSMessage? {
             do {
-                let primaryMessage = self.messageBuilder.buildLinktestRequest(hsmsSession: self)
+                let primaryMessage = self.messageBuilder.buildLinktestRequest(sessionId: self.sessionId)
                 if let r = try self.send(hsmsMessage: primaryMessage) {
                     if r.messageType == .rejectRequest {
                         throw HSMSError.rejectRequest(primaryMessage: primaryMessage, rejectRequestMessage: r)
@@ -539,35 +491,35 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
         
         @discardableResult
         public func asyncSendLinktestRequest() async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildLinktestRequest(hsmsSession: self))
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildLinktestRequest(sessionId: self.sessionId))
         }
         
-        public func replyLinktestResponse(primaryMessage: HSMSMessage) throws {
-            try self.send(hsmsMessage: self.messageBuilder.buildLinktestResponse(primaryMessage: primaryMessage))
-        }
-        
-        @discardableResult
-        public func asyncReplyLinktestResponse(primaryMessage: HSMSMessage) async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildLinktestResponse(primaryMessage: primaryMessage))
+        public func replyLinktestResponse(primaryMessage: inout HSMSMessage) throws {
+            try self.send(hsmsMessage: self.messageBuilder.buildLinktestResponse(linktestRequest: primaryMessage) )
         }
         
         @discardableResult
-        public func sendRejectRequest(primaryMessage: HSMSMessage, reason: HSMSMessage.RejectReason, byte2: UInt8) throws -> HSMSMessage? {
-            return try self.send(hsmsMessage: self.messageBuilder.buildRejectRequest(primaryMessage: primaryMessage, reason: reason, byte2: byte2))
+        public func asyncReplyLinktestResponse(primaryMessage: inout HSMSMessage) async -> Result<HSMSMessage?, Error> {
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildLinktestResponse(linktestRequest: primaryMessage))
         }
         
-        public func asyncSendRejectRequest(primaryMessage: HSMSMessage, reason: HSMSMessage.RejectReason, byte2: UInt8) async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildRejectRequest(primaryMessage: primaryMessage, reason: reason, byte2: byte2))
+        @discardableResult
+        public func sendRejectRequest(primaryMessage: inout HSMSMessage, reason: HSMSMessage.RejectReason, byte2: UInt8) throws -> HSMSMessage? {
+            return try self.send(hsmsMessage: self.messageBuilder.buildRejectRequest(referenceMessage: primaryMessage, rejectReason: reason, byte2: byte2))
+        }
+        
+        public func asyncSendRejectRequest(primaryMessage: inout HSMSMessage, reason: HSMSMessage.RejectReason, byte2: UInt8) async -> Result<HSMSMessage?, Error> {
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildRejectRequest(referenceMessage: primaryMessage, rejectReason: reason, byte2: byte2))
         }
         
         @discardableResult
         public func sendSeparateRequest() throws -> HSMSMessage? {
-            return try self.send(hsmsMessage: self.messageBuilder.buildSeparateRequest(hsmsSession: self))
+            return try self.send(hsmsMessage: self.messageBuilder.buildSeparateRequest(sessionId: self.sessionId))
         }
         
         @discardableResult
         public func asyncSendSeparateRequest() async -> Result<HSMSMessage?, Error> {
-            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildSeparateRequest(hsmsSession: self))
+            return await self.asyncSend(hsmsMessage: self.messageBuilder.buildSeparateRequest(sessionId: self.sessionId))
         }
         
     }
