@@ -72,7 +72,7 @@ struct  HSMSMessageDecoderTests {
         let message0 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message0.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: message0) == .success)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: message0) == .success)
         #expect(message0.secs2Body == nil)
         #expect(message0.isDataMessage == false)
         #expect(message0.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x00, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -82,7 +82,7 @@ struct  HSMSMessageDecoderTests {
         let message1 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message1.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: message1) == .actived)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: message1) == .actived)
         #expect(message1.secs2Body == nil)
         #expect(message1.isDataMessage == false)
         #expect(message1.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x01, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -92,7 +92,7 @@ struct  HSMSMessageDecoderTests {
         let message2 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message2.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: message2) == .notReady)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: message2) == .notReady)
         #expect(message2.secs2Body == nil)
         #expect(message2.isDataMessage == false)
         #expect(message2.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x02, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -102,7 +102,7 @@ struct  HSMSMessageDecoderTests {
         let message3 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message3.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: message3) == .alreadyUsed)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: message3) == .alreadyUsed)
         #expect(message3.secs2Body == nil)
         #expect(message3.isDataMessage == false)
         #expect(message3.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x03, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -112,7 +112,7 @@ struct  HSMSMessageDecoderTests {
         let message4 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message4.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: message4) == .entityUnknown)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: message4) == .entityUnknown)
         #expect(message4.secs2Body == nil)
         #expect(message4.isDataMessage == false)
         #expect(message4.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x04, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -122,7 +122,7 @@ struct  HSMSMessageDecoderTests {
         let message5 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message5.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: message5) == .entityAlreadyUsed)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: message5) == .entityAlreadyUsed)
         #expect(message5.secs2Body == nil)
         #expect(message5.isDataMessage == false)
         #expect(message5.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x05, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -132,7 +132,7 @@ struct  HSMSMessageDecoderTests {
         let message6 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message6.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: message6) == .entityActived)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: message6) == .entityActived)
         #expect(message6.secs2Body == nil)
         #expect(message6.isDataMessage == false)
         #expect(message6.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x06, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -142,7 +142,7 @@ struct  HSMSMessageDecoderTests {
         let messageFF = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(messageFF.messageType == .selectResponse)
-        #expect(HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: messageFF) == .unknown)
+        #expect(HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: messageFF) == .unknown)
         #expect(messageFF.secs2Body == nil)
         #expect(messageFF.isDataMessage == false)
         #expect(messageFF.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x81, 0x00, 0x02, 0x01, 0x02, 0x03, 0x04]))
@@ -173,7 +173,7 @@ struct  HSMSMessageDecoderTests {
         let message0 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message0.messageType == .deselectResponse)
-        #expect(HSMSMessage.DeselectStatus.get(hsmsDeselectRespnseMessage: message0) == .success)
+        #expect(HSMSMessage.DeselectStatus(hsmsDeselectRespnseMessage: message0) == .success)
         #expect(message0.secs2Body == nil)
         #expect(message0.isDataMessage == false)
         #expect(message0.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x00, 0x00, 0x04, 0x01, 0x02, 0x03, 0x04]))
@@ -183,7 +183,7 @@ struct  HSMSMessageDecoderTests {
         let message1 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message1.messageType == .deselectResponse)
-        #expect(HSMSMessage.DeselectStatus.get(hsmsDeselectRespnseMessage: message1) == .noSelected)
+        #expect(HSMSMessage.DeselectStatus(hsmsDeselectRespnseMessage: message1) == .noSelected)
         #expect(message1.secs2Body == nil)
         #expect(message1.isDataMessage == false)
         #expect(message1.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x01, 0x00, 0x04, 0x01, 0x02, 0x03, 0x04]))
@@ -193,7 +193,7 @@ struct  HSMSMessageDecoderTests {
         let message2 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message2.messageType == .deselectResponse)
-        #expect(HSMSMessage.DeselectStatus.get(hsmsDeselectRespnseMessage: message2) == .failed)
+        #expect(HSMSMessage.DeselectStatus(hsmsDeselectRespnseMessage: message2) == .failed)
         #expect(message2.secs2Body == nil)
         #expect(message2.isDataMessage == false)
         #expect(message2.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x02, 0x00, 0x04, 0x01, 0x02, 0x03, 0x04]))
@@ -203,7 +203,7 @@ struct  HSMSMessageDecoderTests {
         let messageFF = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(messageFF.messageType == .deselectResponse)
-        #expect(HSMSMessage.DeselectStatus.get(hsmsDeselectRespnseMessage: messageFF) == .unknown)
+        #expect(HSMSMessage.DeselectStatus(hsmsDeselectRespnseMessage: messageFF) == .unknown)
         #expect(messageFF.secs2Body == nil)
         #expect(messageFF.isDataMessage == false)
         #expect(messageFF.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x00, 0x81, 0x00, 0x04, 0x01, 0x02, 0x03, 0x04]))
@@ -246,7 +246,7 @@ struct  HSMSMessageDecoderTests {
         let message1 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message1.messageType == .rejectRequest)
-        #expect(HSMSMessage.RejectReason.get(hsmsRejectRequestMessage: message1) == .notSupportTypeS)
+        #expect(HSMSMessage.RejectReason(hsmsRejectRequestMessage: message1) == .notSupportTypeS)
         #expect(message1.secs2Body == nil)
         #expect(message1.isDataMessage == false)
         #expect(message1.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x03, 0x01, 0x00, 0x07, 0x01, 0x02, 0x03, 0x04]))
@@ -256,7 +256,7 @@ struct  HSMSMessageDecoderTests {
         let message2 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message2.messageType == .rejectRequest)
-        #expect(HSMSMessage.RejectReason.get(hsmsRejectRequestMessage: message2) == .notSupportTypeP)
+        #expect(HSMSMessage.RejectReason(hsmsRejectRequestMessage: message2) == .notSupportTypeP)
         #expect(message2.secs2Body == nil)
         #expect(message2.isDataMessage == false)
         #expect(message2.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x03, 0x02, 0x00, 0x07, 0x01, 0x02, 0x03, 0x04]))
@@ -266,7 +266,7 @@ struct  HSMSMessageDecoderTests {
         let message3 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message3.messageType == .rejectRequest)
-        #expect(HSMSMessage.RejectReason.get(hsmsRejectRequestMessage: message3) == .transactionNotOpen)
+        #expect(HSMSMessage.RejectReason(hsmsRejectRequestMessage: message3) == .transactionNotOpen)
         #expect(message3.secs2Body == nil)
         #expect(message3.isDataMessage == false)
         #expect(message3.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x03, 0x03, 0x00, 0x07, 0x01, 0x02, 0x03, 0x04]))
@@ -276,7 +276,7 @@ struct  HSMSMessageDecoderTests {
         let message4 = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(message4.messageType == .rejectRequest)
-        #expect(HSMSMessage.RejectReason.get(hsmsRejectRequestMessage: message4) == .notSelected)
+        #expect(HSMSMessage.RejectReason(hsmsRejectRequestMessage: message4) == .notSelected)
         #expect(message4.secs2Body == nil)
         #expect(message4.isDataMessage == false)
         #expect(message4.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x03, 0x04, 0x00, 0x07, 0x01, 0x02, 0x03, 0x04]))
@@ -286,7 +286,7 @@ struct  HSMSMessageDecoderTests {
         let messageFF = HSMSMessageDecoder.shared.decode(header10Bytes: header10Bytes, secs2BodyData: secs2Body)
         
         #expect(messageFF.messageType == .rejectRequest)
-        #expect(HSMSMessage.RejectReason.get(hsmsRejectRequestMessage: messageFF) == .unknown)
+        #expect(HSMSMessage.RejectReason(hsmsRejectRequestMessage: messageFF) == .unknown)
         #expect(messageFF.secs2Body == nil)
         #expect(messageFF.isDataMessage == false)
         #expect(messageFF.data == Data([0x00, 0x00, 0x00, 0x0A, 0x01, 0x02, 0x03, 0x81, 0x00, 0x07, 0x01, 0x02, 0x03, 0x04]))

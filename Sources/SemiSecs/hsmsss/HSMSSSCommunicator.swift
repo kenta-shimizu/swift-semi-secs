@@ -612,7 +612,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                     return
                 }
 
-                let selectStatus = HSMSMessage.SelectStatus.get(hsmsSelectRespnseMessage: r)
+                let selectStatus = HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: r)
                 switch selectStatus {
                 case .success:
                     // success

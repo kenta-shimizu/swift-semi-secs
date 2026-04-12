@@ -180,7 +180,7 @@ public extension SECS2BodyDecodable {
             return nil
         }
         
-        let itemType = SECS2BodyItemType.get(itemTypeByte: data[startIndex])
+        let itemType = SECS2BodyItemType(itemTypeByte: data[startIndex])
         let lengthByte = data[startIndex] & 0x03
         
         guard (startIndex + Int(lengthByte)) < data.endIndex else {

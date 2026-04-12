@@ -100,26 +100,26 @@ public enum SECS2BodyItemType: CaseIterable, Sendable {
         return self.itemProperty.support
     }
     
-    public static func get(itemTypeByte: UInt8) -> Self {
+    public init(itemTypeByte: UInt8) {
         let ref: UInt8 = itemTypeByte & 0xFC
         for i in Self.allCases {
             if i.itemTypeByte == ref {
-                return i
+                self = i
+                return
             }
         }
-        return .unknown
+        self = .unknown
     }
     
-    public static func get(smlItemString: String) -> Self {
+    public init(smlItemString: String) {
         for i in Self.allCases {
             if i.smlString == smlItemString {
-                return i
+                self = i
+                return
             }
         }
-        return .unknown
-    }
-    
-}
+        self = .unknown
+    }}
 
 /// SECS-II-Body
 public protocol SECS2Body: Equatable, Sequence, CustomStringConvertible, CustomDebugStringConvertible, Sendable {
@@ -134,46 +134,46 @@ public protocol SECS2Body: Equatable, Sequence, CustomStringConvertible, CustomD
     subscript(index: Int) -> Any? { get }
     
     @discardableResult
-    func getSECS2Body(_ first: Int, _ indices: Int...) -> (any SECS2Body)?
+    func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2Body)?
 
     @discardableResult
-    func getBool(_ first: Int, _ indices: Int...) -> Bool?
+    func boolValue(at: Int, _ indices: Int...) -> Bool?
     
     @discardableResult
-    func getString(_ indices: Int...) -> String?
+    func stringValue(at: Int...) -> String?
     
     @discardableResult
-    func getInt8(_ first: Int, _ indices: Int...) -> Int8?
+    func int8Value(at: Int, _ indices: Int...) -> Int8?
     
     @discardableResult
-    func getInt16(_ first: Int, _ indices: Int...) -> Int16?
+    func int16Value(at: Int, _ indices: Int...) -> Int16?
     
     @discardableResult
-    func getInt32(_ first: Int, _ indices: Int...) -> Int32?
+    func int32Value(at: Int, _ indices: Int...) -> Int32?
     
     @discardableResult
-    func getInt64(_ first: Int, _ indices: Int...) -> Int64?
+    func int64Value(at: Int, _ indices: Int...) -> Int64?
     
     @discardableResult
-    func getUInt8(_ first: Int, _ indices: Int...) -> UInt8?
+    func uint8Value(at: Int, _ indices: Int...) -> UInt8?
     
     @discardableResult
-    func getUInt16(_ first: Int, _ indices: Int...) -> UInt16?
+    func uint16Value(at: Int, _ indices: Int...) -> UInt16?
     
     @discardableResult
-    func getUInt32(_ first: Int, _ indices: Int...) -> UInt32?
+    func uint32Value(at: Int, _ indices: Int...) -> UInt32?
     
     @discardableResult
-    func getUInt64(_ first: Int, _ indices: Int...) -> UInt64?
+    func uint64Value(at: Int, _ indices: Int...) -> UInt64?
     
     @discardableResult
-    func getFloat(_ first: Int, _ indices: Int...) -> Float?
+    func floatValue(at: Int, _ indices: Int...) -> Float?
     
     @discardableResult
-    func getDouble(_ first: Int, _ indices: Int...) -> Double?
+    func doubleValue(at: Int, _ indices: Int...) -> Double?
     
     @discardableResult
-    func getAny(_ indices: Int...) -> Any?
+    func anyValue(at: Int...) -> Any?
     
 }
 
@@ -200,72 +200,72 @@ public extension SECS2Body {
     }
     
     @discardableResult
-    func getSECS2Body(_ first: Int, _ indices: Int...) -> (any SECS2Body)? {
+    func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2Body)? {
         return nil
     }
     
     @discardableResult
-    func getBool(_ first: Int, _ indices: Int...) -> Bool? {
+    func boolValue(at: Int, _ indices: Int...) -> Bool? {
         return nil
     }
     
     @discardableResult
-    func getString(_ indices: Int...) -> String? {
+    func stringValue(at: Int...) -> String? {
         return nil
     }
     
     @discardableResult
-    func getInt8(_ first: Int, _ indices: Int...) -> Int8? {
+    func int8Value(at: Int, _ indices: Int...) -> Int8? {
         return nil
     }
     
     @discardableResult
-    func getInt16(_ first: Int, _ indices: Int...) -> Int16? {
+    func int16Value(at: Int, _ indices: Int...) -> Int16? {
         return nil
     }
     
     @discardableResult
-    func getInt32(_ first: Int, _ indices: Int...) -> Int32? {
+    func int32Value(at: Int, _ indices: Int...) -> Int32? {
         return nil
     }
     
     @discardableResult
-    func getInt64(_ first: Int, _ indices: Int...) -> Int64? {
+    func int64Value(at: Int, _ indices: Int...) -> Int64? {
         return nil
     }
     
     @discardableResult
-    func getUInt8(_ first: Int, _ indices: Int...) -> UInt8? {
+    func uint8Value(at: Int, _ indices: Int...) -> UInt8? {
         return nil
     }
     
     @discardableResult
-    func getUInt16(_ first: Int, _ indices: Int...) -> UInt16? {
+    func uint16Value(at: Int, _ indices: Int...) -> UInt16? {
         return nil
     }
     
     @discardableResult
-    func getUInt32(_ first: Int, _ indices: Int...) -> UInt32? {
+    func uint32Value(at: Int, _ indices: Int...) -> UInt32? {
         return nil
     }
     
     @discardableResult
-    func getUInt64(_ first: Int, _ indices: Int...) -> UInt64? {
+    func uint64Value(at: Int, _ indices: Int...) -> UInt64? {
         return nil
     }
     
     @discardableResult
-    func getFloat(_ first: Int, _ indices: Int...) -> Float? {
+    func floatValue(at: Int, _ indices: Int...) -> Float? {
         return nil
     }
     
     @discardableResult
-    func getDouble(_ first: Int, _ indices: Int...) -> Double? {
+    func doubleValue(at: Int, _ indices: Int...) -> Double? {
         return nil
     }
     
     @discardableResult
-    func getAny(_ indices: Int...) -> Any? {
+    func anyValue(at: Int...) -> Any? {
         return nil
     }
     
@@ -278,20 +278,20 @@ public protocol SECS2BaseBody: SECS2Body {
     @discardableResult
     func smlString(indent: String) -> String
     
-    func getSECS2Body(indices: [Int]) -> (any SECS2Body)?
-    func getBool(indices: [Int]) -> Bool?
-    func getString(indices: [Int]) -> String?
-    func getInt8(indices: [Int]) -> Int8?
-    func getInt16(indices: [Int]) -> Int16?
-    func getInt32(indices: [Int]) -> Int32?
-    func getInt64(indices: [Int]) -> Int64?
-    func getUInt8(indices: [Int]) -> UInt8?
-    func getUInt16(indices: [Int]) -> UInt16?
-    func getUInt32(indices: [Int]) -> UInt32?
-    func getUInt64(indices: [Int]) -> UInt64?
-    func getFloat(indices: [Int]) -> Float?
-    func getDouble(indices: [Int]) -> Double?
-    func getAny(indices: [Int]) -> Any?
+    func secs2BodyValue(indices: [Int]) -> (any SECS2Body)?
+    func boolValue(indices: [Int]) -> Bool?
+    func stringValue(indices: [Int]) -> String?
+    func int8Value(indices: [Int]) -> Int8?
+    func int16Value(indices: [Int]) -> Int16?
+    func int32Value(indices: [Int]) -> Int32?
+    func int64Value(indices: [Int]) -> Int64?
+    func uint8Value(indices: [Int]) -> UInt8?
+    func uint16Value(indices: [Int]) -> UInt16?
+    func uint32Value(indices: [Int]) -> UInt32?
+    func uint64Value(indices: [Int]) -> UInt64?
+    func floatValue(indices: [Int]) -> Float?
+    func doubleValue(indices: [Int]) -> Double?
+    func anyValue(indices: [Int]) -> Any?
     
 }
 
@@ -306,130 +306,130 @@ public extension SECS2BaseBody {
         return "\(indent)<\(self.type.smlString) [\(self.count)] \(self.smlValueString)>"
     }
     
-    func getSECS2Body(indices: [Int]) -> (any SECS2Body)? {
+    func secs2BodyValue(indices: [Int]) -> (any SECS2Body)? {
         return nil
     }
     
-    func getBool(indices: [Int]) -> Bool? {
+    func boolValue(indices: [Int]) -> Bool? {
         return nil
     }
     
-    func getString(indices: [Int]) -> String? {
+    func stringValue(indices: [Int]) -> String? {
         return nil
     }
     
-    func getInt8(indices: [Int]) -> Int8? {
+    func int8Value(indices: [Int]) -> Int8? {
         return nil
     }
     
-    func getInt16(indices: [Int]) -> Int16? {
+    func int16Value(indices: [Int]) -> Int16? {
         return nil
     }
     
-    func getInt32(indices: [Int]) -> Int32? {
+    func int32Value(indices: [Int]) -> Int32? {
         return nil
     }
     
-    func getInt64(indices: [Int]) -> Int64? {
+    func int64Value(indices: [Int]) -> Int64? {
         return nil
     }
     
-    func getUInt8(indices: [Int]) -> UInt8? {
+    func uint8Value(indices: [Int]) -> UInt8? {
         return nil
     }
     
-    func getUInt16(indices: [Int]) -> UInt16? {
+    func uint16Value(indices: [Int]) -> UInt16? {
         return nil
     }
     
-    func getUInt32(indices: [Int]) -> UInt32? {
+    func uint32Value(indices: [Int]) -> UInt32? {
         return nil
     }
     
-    func getUInt64(indices: [Int]) -> UInt64? {
+    func uint64Value(indices: [Int]) -> UInt64? {
         return nil
     }
     
-    func getFloat(indices: [Int]) -> Float? {
+    func floatValue(indices: [Int]) -> Float? {
         return nil
     }
     
-    func getDouble(indices: [Int]) -> Double? {
+    func doubleValue(indices: [Int]) -> Double? {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         return nil
     }
     
     @discardableResult
-    func getSECS2Body(_ first: Int, _ indices: Int...) -> (any SECS2Body)? {
-        return self.getSECS2Body(indices: [first] + indices)
+    func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2Body)? {
+        return self.secs2BodyValue(indices: [at] + indices)
     }
     
     @discardableResult
-    func getString(_ indices: Int...) -> String? {
-        return self.getString(indices: indices)
+    func boolValue(at: Int, _ indices: Int...) -> Bool? {
+        return self.boolValue(indices: [at] + indices)
     }
     
     @discardableResult
-    func getBool(_ first: Int, _ indices: Int...) -> Bool? {
-        return self.getBool(indices: [first] + indices)
+    func stringValue(at: Int...) -> String? {
+        return self.stringValue(indices: at)
     }
     
     @discardableResult
-    func getInt8(_ first: Int, _ indices: Int...) -> Int8? {
-        return self.getInt8(indices: [first] + indices)
+    func int8Value(at: Int, _ indices: Int...) -> Int8? {
+        return self.int8Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getInt16(_ first: Int, _ indices: Int...) -> Int16? {
-        return self.getInt16(indices: [first] + indices)
+    func int16Value(at: Int, _ indices: Int...) -> Int16? {
+        return self.int16Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getInt32(_ first: Int, _ indices: Int...) -> Int32? {
-        return self.getInt32(indices: [first] + indices)
+    func int32Value(at: Int, _ indices: Int...) -> Int32? {
+        return self.int32Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getInt64(_ first: Int, _ indices: Int...) -> Int64? {
-        return self.getInt64(indices: [first] + indices)
+    func int64Value(at: Int, _ indices: Int...) -> Int64? {
+        return self.int64Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getUInt8(_ first: Int, _ indices: Int...) -> UInt8? {
-        return self.getUInt8(indices: [first] + indices)
+    func uint8Value(at: Int, _ indices: Int...) -> UInt8? {
+        return self.uint8Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getUInt16(_ first: Int, _ indices: Int...) -> UInt16? {
-        return self.getUInt16(indices: [first] + indices)
+    func uint16Value(at: Int, _ indices: Int...) -> UInt16? {
+        return self.uint16Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getUInt32(_ first: Int, _ indices: Int...) -> UInt32? {
-        return self.getUInt32(indices: [first] + indices)
+    func uint32Value(at: Int, _ indices: Int...) -> UInt32? {
+        return self.uint32Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getUInt64(_ first: Int, _ indices: Int...) -> UInt64? {
-        return self.getUInt64(indices: [first] + indices)
+    func uint64Value(at: Int, _ indices: Int...) -> UInt64? {
+        return self.uint64Value(indices: [at] + indices)
     }
     
     @discardableResult
-    func getFloat(_ first: Int, _ indices: Int...) -> Float? {
-        return self.getFloat(indices: [first] + indices)
+    func floatValue(at: Int, _ indices: Int...) -> Float? {
+        return self.floatValue(indices: [at] + indices)
     }
     
     @discardableResult
-    func getDouble(_ first: Int, _ indices: Int...) -> Double? {
-        return self.getDouble(indices: [first] + indices)
+    func doubleValue(at: Int, _ indices: Int...) -> Double? {
+        return self.doubleValue(indices: [at] + indices)
     }
     
     @discardableResult
-    func getAny(_ indices: Int...) -> Any? {
-        return self.getAny(indices: indices)
+    func anyValue(at: Int...) -> Any? {
+        return self.anyValue(indices: at)
     }
     
 }
@@ -480,131 +480,131 @@ internal final class SECS2ListBody: SECS2BaseBody {
     }
     
     subscript(index: Int) -> Any? {
-        return self.getSECS2BaseBody(index: index)
+        return self.secs2BaseBodyValue(index: index)
     }
     
     func makeIterator() -> IndexingIterator<[any SECS2Body]> {
         return (self._value as [any SECS2Body]).makeIterator()
     }
     
-    private func getSECS2BaseBody(index: Int) -> (any SECS2BaseBody)? {
+    private func secs2BaseBodyValue(index: Int) -> (any SECS2BaseBody)? {
         if self._value.indices.contains(index) {
             return self._value[index]
         }
         return nil
     }
     
-    func getSECS2Body(indices: [Int]) -> (any SECS2Body)? {
-        let r = self.getSECS2BaseBody(index: indices[0])
+    func secs2BodyValue(indices: [Int]) -> (any SECS2Body)? {
+        let r = self.secs2BaseBodyValue(index: indices[0])
         if indices.count > 1 {
-            return r?.getSECS2Body(indices: Array(indices.dropFirst()))
+            return r?.secs2BodyValue(indices: Array(indices.dropFirst()))
         } else {
             return r
         }
     }
     
-    func getBool(indices: [Int]) -> Bool? {
+    func boolValue(indices: [Int]) -> Bool? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getBool(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.boolValue(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getString(indices: [Int]) -> String? {
+    func stringValue(indices: [Int]) -> String? {
         if indices.count > 0 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getString(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.stringValue(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getInt8(indices: [Int]) -> Int8? {
+    func int8Value(indices: [Int]) -> Int8? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getInt8(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.int8Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getInt16(indices: [Int]) -> Int16? {
+    func int16Value(indices: [Int]) -> Int16? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getInt16(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.int16Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getInt32(indices: [Int]) -> Int32? {
+    func int32Value(indices: [Int]) -> Int32? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getInt32(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.int32Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getInt64(indices: [Int]) -> Int64? {
+    func int64Value(indices: [Int]) -> Int64? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getInt64(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.int64Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getUInt8(indices: [Int]) -> UInt8? {
+    func uint8Value(indices: [Int]) -> UInt8? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getUInt8(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.uint8Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getUInt16(indices: [Int]) -> UInt16? {
+    func uint16Value(indices: [Int]) -> UInt16? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getUInt16(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.uint16Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getUInt32(indices: [Int]) -> UInt32? {
+    func uint32Value(indices: [Int]) -> UInt32? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getUInt32(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.uint32Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getUInt64(indices: [Int]) -> UInt64? {
+    func uint64Value(indices: [Int]) -> UInt64? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getUInt64(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.uint64Value(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getFloat(indices: [Int]) -> Float? {
+    func floatValue(indices: [Int]) -> Float? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getFloat(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.floatValue(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getDouble(indices: [Int]) -> Double? {
+    func doubleValue(indices: [Int]) -> Double? {
         if indices.count > 1 {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getDouble(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.doubleValue(indices: Array(indices.dropFirst()))
         }
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self.value
         } else {
-            let r = self.getSECS2BaseBody(index: indices[0])
-            return r?.getAny(indices: Array(indices.dropFirst()))
+            let r = self.secs2BaseBodyValue(index: indices[0])
+            return r?.anyValue(indices: Array(indices.dropFirst()))
         }
     }
     
@@ -651,7 +651,7 @@ internal struct SECS2BinaryBody: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getUInt8(indices: [Int]) -> UInt8? {
+    func uint8Value(indices: [Int]) -> UInt8? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -661,11 +661,11 @@ internal struct SECS2BinaryBody: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getUInt8(indices: indices)
+        return self.uint8Value(indices: indices)
     }
     
 }
@@ -711,7 +711,7 @@ internal struct SECS2BooleanBody: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getBool(indices: [Int]) -> Bool? {
+    func boolValue(indices: [Int]) -> Bool? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -721,11 +721,11 @@ internal struct SECS2BooleanBody: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getBool(indices: indices)
+        return self.boolValue(indices: indices)
     }
     
 }
@@ -769,14 +769,14 @@ internal struct SECS2AsciiBody: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getString(indices: [Int]) -> String? {
+    func stringValue(indices: [Int]) -> String? {
         if indices.isEmpty {
             return self._value
         }
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.count == 0 {
             return self._value
         } else if indices.count == 1 {
@@ -913,7 +913,7 @@ internal struct SECS2Int1Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getInt8(indices: [Int]) -> Int8? {
+    func int8Value(indices: [Int]) -> Int8? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -923,11 +923,11 @@ internal struct SECS2Int1Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getInt8(indices: indices)
+        return self.int8Value(indices: indices)
     }
 
 }
@@ -973,7 +973,7 @@ internal struct SECS2Int2Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getInt16(indices: [Int]) -> Int16? {
+    func int16Value(indices: [Int]) -> Int16? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -983,11 +983,11 @@ internal struct SECS2Int2Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getInt16(indices: indices)
+        return self.int16Value(indices: indices)
     }
 
 }
@@ -1033,7 +1033,7 @@ internal struct SECS2Int4Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getInt32(indices: [Int]) -> Int32? {
+    func int32Value(indices: [Int]) -> Int32? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1043,11 +1043,11 @@ internal struct SECS2Int4Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getInt32(indices: indices)
+        return self.int32Value( indices: indices)
     }
 
 }
@@ -1093,7 +1093,7 @@ internal struct SECS2Int8Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getInt64(indices: [Int]) -> Int64? {
+    func int64Value(indices: [Int]) -> Int64? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1103,11 +1103,11 @@ internal struct SECS2Int8Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getInt64(indices: indices)
+        return self.int64Value(indices: indices)
     }
 
 }
@@ -1153,7 +1153,7 @@ internal struct SECS2UInt1Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getUInt8(indices: [Int]) -> UInt8? {
+    func uint8Value(indices: [Int]) -> UInt8? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1163,11 +1163,11 @@ internal struct SECS2UInt1Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getUInt8(indices: indices)
+        return self.uint8Value(indices: indices)
     }
 
 }
@@ -1213,7 +1213,7 @@ internal struct SECS2UInt2Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getUInt16(indices: [Int]) -> UInt16? {
+    func uint16Value(indices: [Int]) -> UInt16? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1223,11 +1223,11 @@ internal struct SECS2UInt2Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getUInt16(indices: indices)
+        return self.uint16Value(indices: indices)
     }
 
 }
@@ -1273,7 +1273,7 @@ internal struct SECS2UInt4Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getUInt32(indices: [Int]) -> UInt32? {
+    func uint32Value(indices: [Int]) -> UInt32? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1283,11 +1283,11 @@ internal struct SECS2UInt4Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getUInt32(indices: indices)
+        return self.uint32Value(indices: indices)
     }
 
 }
@@ -1333,7 +1333,7 @@ internal struct SECS2UInt8Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getUInt64(indices: [Int]) -> UInt64? {
+    func uint64Value(indices: [Int]) -> UInt64? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1343,11 +1343,11 @@ internal struct SECS2UInt8Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getUInt64(indices: indices)
+        return self.uint64Value(indices: indices)
     }
 
 }
@@ -1393,7 +1393,7 @@ internal struct SECS2Float4Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getFloat(indices: [Int]) -> Float? {
+    func floatValue(indices: [Int]) -> Float? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1403,11 +1403,11 @@ internal struct SECS2Float4Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getFloat(indices: indices)
+        return self.floatValue(indices: indices)
     }
 
 }
@@ -1453,7 +1453,7 @@ internal struct SECS2Float8Body: SECS2BaseBody {
         return self._value.makeIterator()
     }
     
-    func getDouble(indices: [Int]) -> Double? {
+    func doubleValue(indices: [Int]) -> Double? {
         if indices.count == 1 {
             let index = indices[0]
             if self._value.indices.contains(index) {
@@ -1463,11 +1463,11 @@ internal struct SECS2Float8Body: SECS2BaseBody {
         return nil
     }
     
-    func getAny(indices: [Int]) -> Any? {
+    func anyValue(indices: [Int]) -> Any? {
         if indices.isEmpty {
             return self._value
         }
-        return self.getDouble(indices: indices)
+        return self.doubleValue(indices: indices)
     }
 
 }

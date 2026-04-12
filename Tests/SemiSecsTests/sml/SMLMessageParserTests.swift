@@ -103,20 +103,20 @@ struct SMLMessageParserTests {
                     #expect(ss?.type == .list)
                     #expect(ss?.count == 2)
                     
-                    #expect(ss?.getSECS2Body(0)?.type == .list)
-                    #expect(ss?.getSECS2Body(0)?.count == 0)
+                    #expect(ss?.secs2BodyValue(at: 0)?.type == .list)
+                    #expect(ss?.secs2BodyValue(at: 0)?.count == 0)
                     
-                    #expect(ss?.getSECS2Body(1)?.type == .list)
-                    #expect(ss?.getSECS2Body(1)?.count == 3)
+                    #expect(ss?.secs2BodyValue(at: 1)?.type == .list)
+                    #expect(ss?.secs2BodyValue(at: 1)?.count == 3)
 
-                    #expect(ss?.getSECS2Body(1, 0)?.type == .list)
-                    #expect(ss?.getSECS2Body(1, 0)?.count == 0)
+                    #expect(ss?.secs2BodyValue(at: 1, 0)?.type == .list)
+                    #expect(ss?.secs2BodyValue(at: 1, 0)?.count == 0)
                     
-                    #expect(ss?.getSECS2Body(1, 1)?.type == .list)
-                    #expect(ss?.getSECS2Body(1, 1)?.count == 0)
+                    #expect(ss?.secs2BodyValue(at: 1, 1)?.type == .list)
+                    #expect(ss?.secs2BodyValue(at: 1, 1)?.count == 0)
                     
-                    #expect(ss?.getSECS2Body(1, 2)?.type == .list)
-                    #expect(ss?.getSECS2Body(1, 2)?.count == 0)
+                    #expect(ss?.secs2BodyValue(at: 1, 2)?.type == .list)
+                    #expect(ss?.secs2BodyValue(at: 1, 2)?.count == 0)
                     
                 case .failure:
                     Issue.record("failed")
@@ -224,7 +224,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .boolean)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getBool(0) == true)
+                    #expect(ss?.boolValue(at: 0) == true)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -241,10 +241,10 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .boolean)
                     #expect(ss?.count == 4)
-                    #expect(ss?.getBool(0) == true)
-                    #expect(ss?.getBool(1) == false)
-                    #expect(ss?.getBool(2) == true)
-                    #expect(ss?.getBool(3) == false)
+                    #expect(ss?.boolValue(at: 0) == true)
+                    #expect(ss?.boolValue(at: 1) == false)
+                    #expect(ss?.boolValue(at: 2) == true)
+                    #expect(ss?.boolValue(at: 3) == false)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -285,7 +285,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .ascii)
                     #expect(ss?.count == 3)
-                    #expect(ss?.getString() == "ABC")
+                    #expect(ss?.stringValue() == "ABC")
                 case .failure:
                     Issue.record("failed")
                 }
@@ -331,7 +331,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int1)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getInt8(0) == 1)
+                    #expect(ss?.int8Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -348,8 +348,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int1)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getInt8(0) == 2)
-                    #expect(ss?.getInt8(1) == 3)
+                    #expect(ss?.int8Value(at: 0) == 2)
+                    #expect(ss?.int8Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -389,7 +389,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int2)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getInt16(0) == 1)
+                    #expect(ss?.int16Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -406,8 +406,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int2)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getInt16(0) == 2)
-                    #expect(ss?.getInt16(1) == 3)
+                    #expect(ss?.int16Value(at: 0) == 2)
+                    #expect(ss?.int16Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -447,7 +447,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int4)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getInt32(0) == 1)
+                    #expect(ss?.int32Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -464,8 +464,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int4)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getInt32(0) == 2)
-                    #expect(ss?.getInt32(1) == 3)
+                    #expect(ss?.int32Value(at: 0) == 2)
+                    #expect(ss?.int32Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -505,7 +505,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int8)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getInt64(0) == 1)
+                    #expect(ss?.int64Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -522,8 +522,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .int8)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getInt64(0) == 2)
-                    #expect(ss?.getInt64(1) == 3)
+                    #expect(ss?.int64Value(at: 0) == 2)
+                    #expect(ss?.int64Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -563,7 +563,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint1)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getUInt8(0) == 1)
+                    #expect(ss?.uint8Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -580,8 +580,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint1)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getUInt8(0) == 2)
-                    #expect(ss?.getUInt8(1) == 3)
+                    #expect(ss?.uint8Value(at: 0) == 2)
+                    #expect(ss?.uint8Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -621,7 +621,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint2)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getUInt16(0) == 1)
+                    #expect(ss?.uint16Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -638,8 +638,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint2)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getUInt16(0) == 2)
-                    #expect(ss?.getUInt16(1) == 3)
+                    #expect(ss?.uint16Value(at: 0) == 2)
+                    #expect(ss?.uint16Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -679,7 +679,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint4)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getUInt32(0) == 1)
+                    #expect(ss?.uint32Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -696,8 +696,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint4)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getUInt32(0) == 2)
-                    #expect(ss?.getUInt32(1) == 3)
+                    #expect(ss?.uint32Value(at: 0) == 2)
+                    #expect(ss?.uint32Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -737,7 +737,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint8)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getUInt64(0) == 1)
+                    #expect(ss?.uint64Value(at: 0) == 1)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -754,8 +754,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .uint8)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getUInt64(0) == 2)
-                    #expect(ss?.getUInt64(1) == 3)
+                    #expect(ss?.uint64Value(at: 0) == 2)
+                    #expect(ss?.uint64Value(at: 1) == 3)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -795,7 +795,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .float4)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getFloat(0) == 1.0)
+                    #expect(ss?.floatValue(at: 0) == 1.0)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -814,8 +814,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .float4)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getFloat(0) == 2.0)
-                    #expect(ss?.getFloat(1) == 3.0)
+                    #expect(ss?.floatValue(at: 0) == 2.0)
+                    #expect(ss?.floatValue(at: 1) == 3.0)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -855,7 +855,7 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .float8)
                     #expect(ss?.count == 1)
-                    #expect(ss?.getDouble(0) == 1.0)
+                    #expect(ss?.doubleValue(at: 0) == 1.0)
                 case .failure:
                     Issue.record("failed")
                 }
@@ -874,8 +874,8 @@ struct SMLMessageParserTests {
                 case .success(let ss):
                     #expect(ss?.type == .float8)
                     #expect(ss?.count == 2)
-                    #expect(ss?.getDouble(0) == 2.0)
-                    #expect(ss?.getDouble(1) == 3.0)
+                    #expect(ss?.doubleValue(at: 0) == 2.0)
+                    #expect(ss?.doubleValue(at: 1) == 3.0)
                 case .failure:
                     Issue.record("failed")
                 }

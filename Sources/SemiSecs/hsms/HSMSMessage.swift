@@ -70,13 +70,14 @@ public struct HSMSMessage: SECSMessage {
             return self.messageTypeProperty.descString
         }
         
-        public static func get(pType: UInt8, sType: UInt8) -> Self {
+        public init(pType: UInt8, sType: UInt8) {
             for i in Self.allCases {
                 if (i.pType == pType) && (i.sType == sType) {
-                    return i
+                    self = i
+                    return
                 }
             }
-            return .unknown
+            self = .unknown
         }
         
         public static func hasPType(hsmsMessage: HSMSMessage) -> Bool {
@@ -124,17 +125,18 @@ public struct HSMSMessage: SECSMessage {
             }
         }
         
-        public static func get(statusByte: UInt8) -> Self {
+        public init(statusByte: UInt8) {
             for i in Self.allCases {
                 if i.statusByte == statusByte {
-                    return i
+                    self = i
+                    return
                 }
             }
-            return .unknown
+            self = .unknown
         }
         
-        public static func get(hsmsSelectRespnseMessage: HSMSMessage) -> Self {
-            return Self.get(statusByte: hsmsSelectRespnseMessage.header10Bytes[3])
+        public init(hsmsSelectRespnseMessage: HSMSMessage) {
+            self.init(statusByte: hsmsSelectRespnseMessage.header10Bytes[3])
         }
         
     }
@@ -170,17 +172,18 @@ public struct HSMSMessage: SECSMessage {
             .failed,
         ]
         
-        public static func get(statusByte: UInt8) -> Self {
+        public init(statusByte: UInt8) {
             for i in Self.statusSet {
                 if i.statusByte == statusByte {
-                    return i
+                    self = i
+                    return
                 }
             }
-            return .unknown
+            self = .unknown
         }
         
-        public static func get(hsmsDeselectRespnseMessage: HSMSMessage) -> Self {
-            return Self.get(statusByte: hsmsDeselectRespnseMessage.header10Bytes[3])
+        public init(hsmsDeselectRespnseMessage: HSMSMessage) {
+            self.init(statusByte: hsmsDeselectRespnseMessage.header10Bytes[3])
         }
         
     }
@@ -209,17 +212,18 @@ public struct HSMSMessage: SECSMessage {
             }
         }
         
-        public static func get(reasonByte: UInt8) -> Self {
+        public init(reasonByte: UInt8) {
             for i in Self.allCases {
                 if i.reasonByte == reasonByte {
-                    return i
+                    self = i
+                    return
                 }
             }
-            return .unknown
+            self = .unknown
         }
         
-        public static func get(hsmsRejectRequestMessage: HSMSMessage) -> Self {
-            return Self.get(reasonByte: hsmsRejectRequestMessage.header10Bytes[3])
+        public init(hsmsRejectRequestMessage: HSMSMessage) {
+            self.init(reasonByte: hsmsRejectRequestMessage.header10Bytes[3])
         }
         
     }
@@ -274,7 +278,7 @@ public struct HSMSMessage: SECSMessage {
     }
     
     public var messageType: MessageType {
-        return MessageType.get(pType: self.pType, sType: self.sType)
+        return MessageType(pType: self.pType, sType: self.sType)
     }
     
     private static let lineSeparator: String = "\n"
