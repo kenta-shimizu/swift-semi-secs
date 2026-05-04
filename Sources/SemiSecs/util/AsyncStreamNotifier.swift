@@ -10,9 +10,9 @@ import Foundation
 /// AsyncStreamNotifier, notify value via AsyncStream.
 internal actor AsyncStreamNotifier<T: Sendable>: AsyncShutdownable {
     
-    internal struct ObserverWrapper: @unchecked Sendable {
+    internal struct ObserverWrapper: Sendable {
         fileprivate let uuid = UUID()
-        fileprivate let observer: (T) -> Void
+        fileprivate nonisolated(unsafe) let observer: (T) -> Void
         
         fileprivate init(observer: @escaping (T) -> Void) {
             self.observer = observer
@@ -48,13 +48,13 @@ internal actor AsyncStreamNotifier<T: Sendable>: AsyncShutdownable {
     }
     
     deinit {
-        if self._shutdowned == false {
-            self.continuation.finish()
-            self.observers.removeAll()
-        }
+        guard self._shutdowned == false else { return }
+        self.continuation.finish()
+        self.observers.removeAll()
     }
     
     internal func shutdown() async {
+        guard self._shutdowned == false else { return }
         self.continuation.finish()
         self.observers.removeAll()
         self._shutdowned = true
@@ -77,7 +77,7 @@ internal actor AsyncStreamNotifier<T: Sendable>: AsyncShutdownable {
     /// - Returns: wrapped observer
     /// - Throws: AsyncShutdownError if shutdowned.
     @discardableResult
-    internal func append(observer: @escaping (T) -> Void) async throws(AsyncShutdownError) -> ObserverWrapper {
+    internal func append(observer: @escaping @Sendable (T) -> Void) async throws(AsyncShutdownError) -> ObserverWrapper {
         guard self.shutdowned == false else {
             throw .alreadyShutdowned
         }

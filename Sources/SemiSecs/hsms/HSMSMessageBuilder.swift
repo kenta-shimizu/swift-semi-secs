@@ -35,20 +35,20 @@ public protocol HSMSMessageBuildable {
     
     /// Build response--HSMSMessage.
     ///
-    /// - Parameter primaryMessage: the  primary-HSMSMessage
+    /// - Parameter primaryMessage: the  primary-SECSMessage
     /// - Parameter stream: the stream number
     /// - Parameter function: the function number
     /// - Parameter wbit: the wbit
     /// - Parameter secs2Body: SECS-II-Body
     /// - Returns: Response HSMSMessage
-    func buildResponseData(primaryMessage: HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) -> HSMSMessage
+    func buildResponseData(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) -> HSMSMessage
     
     /// Build response-message.
     ///
-    /// - Parameter primaryMessage: the  primary-HSMSMessage
+    /// - Parameter primaryMessage: the  primary-SECSMessage
     /// - Parameter smlMessage: the SMLMessage
     /// - Returns: Response HSMSMessage
-    func buildResponseData(primaryMessage: HSMSMessage, smlMessage: SMLMessage) -> HSMSMessage
+    func buildResponseData(primaryMessage: SECSMessage, smlMessage: SMLMessage) -> HSMSMessage
     
     /// Build SELECT.REQ
     ///
@@ -115,12 +115,12 @@ public extension HSMSMessageBuildable {
         return self.buildPrimaryData(sessionId: sessionId, smlMessage: smlMessage)
     }
     
-    func buildResponseData(primaryMessage: HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)? = nil) -> HSMSMessage {
+    func buildResponseData(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)? = nil) -> HSMSMessage {
         let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
         return self.buildResponseData(primaryMessage: primaryMessage, smlMessage: smlMessage)
     }
     
-    func buildResponseData(primaryMessage: HSMSMessage, smlMessage: SMLMessage) -> HSMSMessage {
+    func buildResponseData(primaryMessage: SECSMessage, smlMessage: SMLMessage) -> HSMSMessage {
         let ref = primaryMessage.header10Bytes
         let header10Bytes = Data([
             ref[0],

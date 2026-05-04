@@ -10,11 +10,11 @@ import Synchronization
 
 public final class HSMSGSMessageBuilder: HSMSMessageBuildable {
     
-    public var isEquipmentDelegate: (() -> Bool)?
+    public var isEquipment: (() -> Bool)?
     private let systemLower2BytesCounter: Atomic<UInt16>
     
     public init() {
-        self.isEquipmentDelegate = nil
+        self.isEquipment = nil
         self.systemLower2BytesCounter = Atomic<UInt16>(0)
     }
     
@@ -23,10 +23,6 @@ public final class HSMSGSMessageBuilder: HSMSMessageBuildable {
             UInt8(sessionId >> 8),
             UInt8(sessionId & 0x00FF)
         ]
-    }
-    
-    private func isEquipment() -> Bool {
-        return self.isEquipmentDelegate!()
     }
     
     private func atomicIncrement2Bytes() -> [UInt8] {
@@ -39,7 +35,7 @@ public final class HSMSGSMessageBuilder: HSMSMessageBuildable {
     
     public func buildPrimaryData(sessionId: UInt16, smlMessage: SMLMessage) -> HSMSMessage {
         let ids = self.toSessionIds(sessionId)
-        let isEquipment = self.isEquipment()
+        let isEquipment = self.isEquipment!()
         let systemLower2Bytes = self.atomicIncrement2Bytes()
         let header10Bytes = Data([
             ids[0],
@@ -58,7 +54,7 @@ public final class HSMSGSMessageBuilder: HSMSMessageBuildable {
     
     public func buildSelectRequest(sessionId: UInt16) -> HSMSMessage {
         let ids = self.toSessionIds(sessionId)
-        let isEquipment = self.isEquipment()
+        let isEquipment = self.isEquipment!()
         let systemLower2Bytes = self.atomicIncrement2Bytes()
         let header10Bytes = Data([
             ids[0],
@@ -77,7 +73,7 @@ public final class HSMSGSMessageBuilder: HSMSMessageBuildable {
     
     public func buildDeselectRequest(sessionId: UInt16) -> HSMSMessage {
         let ids = self.toSessionIds(sessionId)
-        let isEquipment = self.isEquipment()
+        let isEquipment = self.isEquipment!()
         let systemLower2Bytes = self.atomicIncrement2Bytes()
         let header10Bytes = Data([
             ids[0],
@@ -96,7 +92,7 @@ public final class HSMSGSMessageBuilder: HSMSMessageBuildable {
     
     public func buildLinktestRequest(sessionId: UInt16) -> HSMSMessage {
         let ids = self.toSessionIds(sessionId)
-        let isEquipment = self.isEquipment()
+        let isEquipment = self.isEquipment!()
         let systemLower2Bytes = self.atomicIncrement2Bytes()
         let header10Bytes = Data([
             0xFF,
@@ -115,7 +111,7 @@ public final class HSMSGSMessageBuilder: HSMSMessageBuildable {
     
     public func buildSeparateRequest(sessionId: UInt16) -> HSMSMessage {
         let ids = self.toSessionIds(sessionId)
-        let isEquipment = self.isEquipment()
+        let isEquipment = self.isEquipment!()
         let systemLower2Bytes = self.atomicIncrement2Bytes()
         let header10Bytes = Data([
             ids[0],

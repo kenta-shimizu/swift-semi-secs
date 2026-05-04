@@ -1,5 +1,5 @@
 //
-//  AsyncStateChangeNotifier.swift
+//  AsyncStateUpdateNotifier.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/01/14.
@@ -7,11 +7,11 @@
 
 import Foundation
 
-internal actor AsyncStateChangeNotifier<T: Equatable & Sendable>: AsyncShutdownable  {
+internal actor AsyncStateUpdateNotifier<T: Equatable & Sendable>: AsyncShutdownable  {
     
-    internal struct ObserverWrapper: @unchecked Sendable {
+    internal struct ObserverWrapper: Sendable {
         fileprivate let uuid = UUID()
-        fileprivate let observer: (T?) -> Void
+        fileprivate nonisolated(unsafe) let observer: (T?) -> Void
         
         fileprivate init(observer: @escaping (T?) -> Void) {
             self.observer = observer
@@ -30,7 +30,16 @@ internal actor AsyncStateChangeNotifier<T: Equatable & Sendable>: AsyncShutdowna
         }
     }
     
-    private var lastState: T
+    private var lastState: T {
+        didSet {
+            if lastState != oldValue {
+                for observer in self.observers {
+                    observer.put(state)
+                }
+            }
+        }
+    }
+    
     internal var state: T {
         get {
             lastState
@@ -39,21 +48,21 @@ internal actor AsyncStateChangeNotifier<T: Equatable & Sendable>: AsyncShutdowna
     
     private var observers: [ObserverWrapper] = []
 
-    internal init(_ state: T) {
+    internal init(state: T) {
         self._shutdowned = false
         self.lastState = state
     }
     
     deinit {
-        if self._shutdowned == false {
-            for observer in self.observers {
-                observer.put(nil)
-            }
-            self.observers.removeAll()
+        guard self._shutdowned == false else { return }
+        for observer in self.observers {
+            observer.put(nil)
         }
+        self.observers.removeAll()
     }
     
     internal func shutdown() async {
+        guard self._shutdowned == false else { return }
         for observer in self.observers {
             observer.put(nil)
         }
@@ -61,25 +70,21 @@ internal actor AsyncStateChangeNotifier<T: Equatable & Sendable>: AsyncShutdowna
         self._shutdowned = true
     }
     
-    internal func set(_ state: T) async throws(AsyncShutdownError) {
+    internal func set(state: T) async throws(AsyncShutdownError) {
         guard self.shutdowned == false else {
             throw .alreadyShutdowned
         }
-        if state != self.lastState {
-            self.lastState = state
-            for observer in self.observers {
-                observer.put(state)
-            }
-        }
+        self.lastState = state
     }
     
     @discardableResult
-    internal func append(observer: @escaping (T?) -> Void) async throws(AsyncShutdownError) -> ObserverWrapper {
+    internal func append(observer: @escaping @Sendable (T?) -> Void) async throws(AsyncShutdownError) -> ObserverWrapper {
         guard self.shutdowned == false else {
             throw .alreadyShutdowned
         }
         let wrapper = ObserverWrapper(observer: observer)
         self.observers.append(wrapper)
+        wrapper.put(self.lastState)
         return wrapper
     }
     

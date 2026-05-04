@@ -1,5 +1,5 @@
 //
-//  AsyncStateChangeNotifierTests.swift
+//  AsyncStateUpdateNotifierTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/01/18.
@@ -8,22 +8,22 @@
 import Testing
 @testable import SemiSecs
 
-@Suite struct AsyncStateChangeNotifierTests {
+@Suite struct AsyncStateUpdateNotifierTests {
 
     @Test func testSet() async throws {
         let s1 = "a"
         let s2 = "b"
         
-        let notifier = AsyncStateChangeNotifier<String>(s1)
+        let notifier = AsyncStateUpdateNotifier<String>(state: s1)
         
         #expect(await notifier.state == s1)
         
-        try await notifier.set(s2)
+        try await notifier.set(state: s2)
         #expect(await notifier.state == s2)
         
         await notifier.shutdown()
         await #expect(throws: AsyncShutdownError.self) {
-            try await notifier.set(s1)
+            try await notifier.set(state: s1)
         }
     }
     
@@ -34,7 +34,7 @@ import Testing
             let s1 = "a"
             let s2 = "b"
             
-            let notifier = AsyncStateChangeNotifier<String>(s1)
+            let notifier = AsyncStateUpdateNotifier<String>(state: s1)
             
             // already setted
             try await notifier.waitUntil(state: s1)
@@ -42,7 +42,7 @@ import Testing
             // waiting state change
             Task {
                 try await Task.sleep(for: .seconds(0.5))
-                try await notifier.set(s2)
+                try await notifier.set(state: s2)
             }
             try await notifier.waitUntil(state: s2)
             
@@ -67,7 +67,7 @@ import Testing
             let s1 = "a"
             let s2 = "b"
             
-            let notifier = AsyncStateChangeNotifier<String>(s1)
+            let notifier = AsyncStateUpdateNotifier<String>(state: s1)
             
             // already setted
             try await notifier.waitUntilNot(state: s2)
@@ -75,7 +75,7 @@ import Testing
             // waiting state change
             Task {
                 try await Task.sleep(for: .seconds(0.5))
-                try await notifier.set(s2)
+                try await notifier.set(state: s2)
             }
             try await notifier.waitUntilNot(state: s1)
             
@@ -100,7 +100,7 @@ import Testing
             let s1 = "a"
             let s2 = "b"
             
-            let notifier = AsyncStateChangeNotifier<String>(s1)
+            let notifier = AsyncStateUpdateNotifier<String>(state: s1)
             
             // already setted
             let r1 = try await notifier.waitUntil(state: s1, timeout: 10.0)
@@ -109,7 +109,7 @@ import Testing
             // set time-in
             Task {
                 try await Task.sleep(for: .seconds(0.5))
-                try await notifier.set(s2)
+                try await notifier.set(state: s2)
             }
             let r2 = try await notifier.waitUntil(state: s2, timeout: 10.0)
             #expect(r2 == true)
@@ -139,7 +139,7 @@ import Testing
             let s1 = "a"
             let s2 = "b"
             
-            let notifier = AsyncStateChangeNotifier<String>(s1)
+            let notifier = AsyncStateUpdateNotifier<String>(state: s1)
             
             // already setted
             let r1 = try await notifier.waitUntilNot(state: s2, timeout: 10.0)
@@ -148,7 +148,7 @@ import Testing
             // set time-in
             Task {
                 try await Task.sleep(for: .seconds(0.5))
-                try await notifier.set(s2)
+                try await notifier.set(state: s2)
             }
             let r2 = try await notifier.waitUntilNot(state: s1, timeout: 10.0)
             #expect(r2 == true)

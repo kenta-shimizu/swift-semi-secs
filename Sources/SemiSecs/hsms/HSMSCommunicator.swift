@@ -8,32 +8,39 @@
 import Foundation
 import Network
 
-public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
+public enum HSMSError: SECSError {
     
-    public enum HSMSError: SECSError {
-        
-        //send
-        case sendFailed(message: HSMSMessage, cause: Error)
-        case sendFailedByTransactionShutdown(message: HSMSMessage)
-        case sendFailedNotConnectedError(message: HSMSMessage)
-        
-        // waitReply
-        case waitReplyFailedByTransactionShutdown(primaryMessage: HSMSMessage)
-        case timeoutT3(primaryMessage: HSMSMessage)
-        case timeoutT6(primaryMessage: HSMSMessage)
-        case rejectRequest(primaryMessage: HSMSMessage, rejectRequestMessage: HSMSMessage)
-        
-        // error
-        case timeoutT8
-        
-        public var description: String {
-            return String(describing: type(of: self))
-        }
-        
-        public var debugDescription: String {
-            return self.description;
-        }
+    // send
+    case sendFailed(message: HSMSMessage, connection: NWConnection, cause: Error)
+    case sendFailedByCommunicatorShutdowned(messageType: HSMSMessage.MessageType, smlMessage: SMLMessage)
+    case sendFailedByCommunicatorShutdowned(messageType: HSMSMessage.MessageType, primaryMessage: SECSMessage, smlMessage: SMLMessage)
+    case sendFailedByCommunicatorShutdowned(messageType: HSMSMessage.MessageType)
+    case sendFailedByCommunicatorShutdowned(messageType: HSMSMessage.MessageType, primaryMessage: HSMSMessage)
+    case sendFailedByCommunicatorShutdowned(messageType: HSMSMessage.MessageType, referenceMessage: HSMSMessage)
+    case sendFailedByCommunicatorShutdowned(message: HSMSMessage)
+    case sendFailedByCommunicatorShutdowned(message: HSMSMessage, connection: NWConnection)
+    case sendFailedByNotConnected(message: HSMSMessage)
+    
+    // waitReply
+    case waitReplyFailedByTransactionShutdown(primaryMessage: HSMSMessage, connection: NWConnection)
+    case timeoutT3(primaryMessage: HSMSMessage, connection: NWConnection)
+    case timeoutT6(primaryMessage: HSMSMessage, connection: NWConnection)
+    case rejectRequest(primaryMessage: HSMSMessage, rejectRequestMessage: HSMSMessage, connection: NWConnection)
+    
+    // error
+    case timeoutT8
+    case illegalReceiveLengthByte
+    
+    public var description: String {
+        return String(describing: type(of: self))
     }
+    
+    public var debugDescription: String {
+        return self.description;
+    }
+}
+
+public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
     
     public enum HSMSConnectionMode {
         case active
@@ -395,7 +402,7 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
             let primaryMessage = self.messageBuilder.buildPrimaryData(sessionId: self.sessionId, smlMessage: smlMessage)
             if let r = try self.send(hsmsMessage: primaryMessage) {
                 if r.messageType == .rejectRequest {
-                    throw HSMSError.rejectRequest(primaryMessage: primaryMessage, rejectRequestMessage: r)
+//                    throw HSMSError.rejectRequest(primaryMessage: primaryMessage, rejectRequestMessage: r)
                 }
                 return r;
             } else {
@@ -477,7 +484,7 @@ public class HSMSCommunicator: SECSCommunicator<HSMSMessage> {
                 let primaryMessage = self.messageBuilder.buildLinktestRequest(sessionId: self.sessionId)
                 if let r = try self.send(hsmsMessage: primaryMessage) {
                     if r.messageType == .rejectRequest {
-                        throw HSMSError.rejectRequest(primaryMessage: primaryMessage, rejectRequestMessage: r)
+//                        throw HSMSError.rejectRequest(primaryMessage: primaryMessage, rejectRequestMessage: r)
                     }
                     return r
                 } else {

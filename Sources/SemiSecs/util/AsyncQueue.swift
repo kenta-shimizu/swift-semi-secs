@@ -10,9 +10,9 @@ import Foundation
 /// AsyncQueue put, take, poll, poll with timeout
 internal actor AsyncQueue<T: Sendable>: AsyncShutdownable {
     
-    internal struct ObserverWrapper: @unchecked Sendable {
+    internal struct ObserverWrapper: Sendable {
         fileprivate let uuid = UUID()
-        fileprivate let observer: (Int) -> Void
+        fileprivate nonisolated(unsafe) let observer: (Int) -> Void
         
         fileprivate init(observer: @escaping (Int) -> Void) {
             self.observer = observer
@@ -41,13 +41,12 @@ internal actor AsyncQueue<T: Sendable>: AsyncShutdownable {
     }
     
     deinit {
-        if self._shutdowned == false {
-            for observer in self.observers {
-                observer.put(-1)
-            }
-            self.observers.removeAll()
-            self.queue.removeAll()
+        guard self._shutdowned == false else { return }
+        for observer in self.observers {
+            observer.put(-1)
         }
+        self.observers.removeAll()
+        self.queue.removeAll()
     }
     
     internal func shutdown() async {

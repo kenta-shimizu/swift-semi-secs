@@ -32,9 +32,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                 try willSendQueue.put(message)
             }
             catch {
-                let error = HSMSError.sendFailedByTransactionShutdown(message: message)
-                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
-                throw error
+//                let error = HSMSError.sendFailedByTransactionShutdown(message: message)
+//                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
+//                throw error
             }
         }
         
@@ -52,9 +52,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                 
                 #warning("TODO")
                 
-                let error = HSMSError.sendFailedByTransactionShutdown(message: message)
-                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
-                throw error
+//                let error = HSMSError.sendFailedByTransactionShutdown(message: message)
+//                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
+//                throw error
             }
             catch {
                 throw error
@@ -68,31 +68,34 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                     if let r = try receiveQueue.poll(timeout: self.communicator!.config.timeout.t3) {
                         return r
                     } else {
-                        let error = HSMSError.timeoutT3(primaryMessage: primaryMessage)
-                        self.putDebugLog(type: .errorHSMSTimeoutT3, value: error)
-                        throw error
+//                        let error = HSMSError.timeoutT3(primaryMessage: primaryMessage)
+//                        self.putDebugLog(type: .errorHSMSTimeoutT3, value: error)
+//                        throw error
                     }
                 default:
                     if let r = try receiveQueue.poll(timeout: self.communicator!.config.timeout.t6) {
                         return r
                     } else {
-                        let error = HSMSError.timeoutT6(primaryMessage: primaryMessage)
-                        self.putDebugLog(type: .errorHSMSTimeoutT6, value: error)
-                        throw error
+//                        let error = HSMSError.timeoutT6(primaryMessage: primaryMessage)
+//                        self.putDebugLog(type: .errorHSMSTimeoutT6, value: error)
+//                        throw error
                     }
                 }
             }
-            catch _ as ShutdownError {
-                
-                #warning("TODO")
-                
-                let error = HSMSError.waitReplyFailedByTransactionShutdown(primaryMessage: primaryMessage)
-                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
-                throw error
-            }
+//            catch error as ShutdownError {
+//                
+//                #warning("TODO")
+//                
+////                let error = HSMSError.waitReplyFailedByTransactionShutdown(primaryMessage: primaryMessage)
+////                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
+////                throw error
+//                throw error
+//            }
             catch {
                 throw error
             }
+            
+            throw AsyncShutdownError.alreadyShutdowned
         }
         
         internal func putDebugLog(type: SECSDebugLog.SECSDebugLogType, value: CustomDebugStringConvertible) {
@@ -166,7 +169,8 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         @discardableResult
         public override func send(hsmsMessage: HSMSMessage) throws -> HSMSMessage? {
             guard let transaction = self.transaction else {
-                throw HSMSError.sendFailedNotConnectedError(message: hsmsMessage)
+//                throw HSMSError.sendFailedNotConnectedError(message: hsmsMessage)
+                return nil
             }
             return try transaction.send(message: hsmsMessage)
         }
@@ -255,7 +259,7 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
         self.isDidStart = false
         self.isDidCancel = false
         super.init(label: label)
-        self.messageBuilder.isEquipmentDelegate = {
+        self.messageBuilder.isEquipment = {
             return self.config.isEquipment
         }
         self.hsmsSession.communicator = self;
@@ -556,9 +560,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                             
                             do {
                                 if let error = error {
-                                    let sendError = HSMSError.sendFailed(message: message, cause: error)
-                                    self.putDebugLog(type: .errorSendHSMSMessageFailed, value: sendError)
-                                    try transaction.sendResultQueue.put(Result.failure(sendError))
+//                                    let sendError = HSMSError.sendFailed(message: message, cause: error)
+//                                    self.putDebugLog(type: .errorSendHSMSMessageFailed, value: sendError)
+//                                    try transaction.sendResultQueue.put(Result.failure(sendError))
                                 } else {
                                     self.putDebugLog(type: .didSendHSMSMessage, value: message)
                                     try transaction.sendResultQueue.put(Result.success(message))
@@ -820,9 +824,9 @@ public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
                             
                             do {
                                 if let error = error {
-                                    let sendError = HSMSError.sendFailed(message: message, cause: error)
-                                    self.putDebugLog(type: .errorSendHSMSMessageFailed, value: sendError)
-                                    try transaction.sendResultQueue.put(Result.failure(sendError))
+//                                    let sendError = HSMSError.sendFailed(message: message, cause: error)
+//                                    self.putDebugLog(type: .errorSendHSMSMessageFailed, value: sendError)
+//                                    try transaction.sendResultQueue.put(Result.failure(sendError))
                                 } else {
                                     self.putDebugLog(type: .didSendHSMSMessage, value: message)
                                     try transaction.sendResultQueue.put(Result.success(message))

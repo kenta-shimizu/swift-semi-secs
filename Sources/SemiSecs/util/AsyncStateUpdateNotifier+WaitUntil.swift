@@ -1,5 +1,5 @@
 //
-//  AsyncStateChangeNotifier+WaitUntil.swift
+//  AsyncStateUpdateNotifier+WaitUntil.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/01/18.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension AsyncStateChangeNotifier {
+extension AsyncStateUpdateNotifier {
     
     internal func waitUntil(state: T) async throws(AsyncShutdownError) {
         try await waitUntil(predicate: { $0 == state })
@@ -17,7 +17,7 @@ extension AsyncStateChangeNotifier {
         try await waitUntil(predicate: { $0 != state })
     }
     
-    private func waitUntil(predicate: @escaping (T) -> Bool) async throws(AsyncShutdownError) {
+    private func waitUntil(predicate: @escaping @Sendable (T?) -> Bool) async throws(AsyncShutdownError) {
         guard self.shutdowned == false else {
             throw .alreadyShutdowned
         }
@@ -71,7 +71,7 @@ extension AsyncStateChangeNotifier {
         }, timeout: timeout)
     }
     
-    private func waitUntil(perform: @Sendable @escaping () async throws -> Void, timeout: TimeInterval) async throws(AsyncShutdownError) -> Bool {
+    private func waitUntil(perform: @escaping @Sendable () async throws -> Void, timeout: TimeInterval) async throws(AsyncShutdownError) -> Bool {
         do {
             return try await withThrowingTaskGroup(of: Bool.self) { group in
                 group.addTask {

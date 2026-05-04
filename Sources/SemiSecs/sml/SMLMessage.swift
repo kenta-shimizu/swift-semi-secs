@@ -5,8 +5,6 @@
 //  Created by kenta-shimizu on 2026/01/03.
 //
 
-import Foundation
-
 /// SMLMessage
 public struct SMLMessage: CustomStringConvertible, Sendable {
     

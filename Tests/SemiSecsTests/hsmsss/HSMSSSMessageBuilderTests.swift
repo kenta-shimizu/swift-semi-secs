@@ -13,7 +13,7 @@ struct HSMSSSMessageBuilderTests {
     
     private func builder(isEquipment: Bool) -> HSMSSSMessageBuilder {
         let builder = HSMSSSMessageBuilder()
-        builder.isEquipmentDelegate = {isEquipment}
+        builder.isEquipment = {isEquipment}
         return builder
     }
     

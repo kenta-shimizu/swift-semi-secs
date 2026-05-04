@@ -12,7 +12,7 @@ struct HSMSGSMessageBuilderTests {
     
     func builder(isEquipment: Bool) -> HSMSGSMessageBuilder {
         let builder = HSMSGSMessageBuilder()
-        builder.isEquipmentDelegate = {isEquipment}
+        builder.isEquipment = {isEquipment}
         return builder
     }
     
@@ -30,7 +30,7 @@ struct HSMSGSMessageBuilderTests {
     
     @Test func testA() async throws {
         
-        let builder = builder(isEquipment: true)
+//        let builder = builder(isEquipment: true)
         
         
         
