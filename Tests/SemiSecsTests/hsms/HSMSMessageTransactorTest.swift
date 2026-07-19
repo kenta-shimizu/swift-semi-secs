@@ -33,60 +33,62 @@ struct HSMSMessageTransactorTest {
         return connection
     }
     
+    private func transactor(timeoutT3: Duration, timeoutT6: Duration) -> HSMSMessageTransactor {
+        let instance = HSMSMessageTransactor()
+        instance.timeoutT3 = { timeoutT3 }
+        instance.timeoutT6 = { timeoutT6 }
+        return instance
+    }
+    
     @Test func testSuccessSendAndReply() async throws {
         
-        let transactor = HSMSMessageTransactor()
+        let transactor = self.transactor(timeoutT3: .seconds(45.0), timeoutT6: .seconds(5.0))
         
-        do {
-            transactor.timeoutT3 = { 45.0 }
-            transactor.timeoutT6 = {  5.0 }
-            
-            transactor.onWillSendMessage = { message, connection in
-                do {
-                    try await transactor.putDidSend(message: message, connection: connection, error: nil)
-                }
-                catch {
-                    Issue.record("will-send error")
-                }
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let builder = equipMessageBuilder()
+            let stream = await transactor.willSendMessageStream()
+            for await value in stream {
+                let message = value.message
+                let connection = value.connection
                 
-                Task.detached {
-                    do {
-                        let builder = equipMessageBuilder()
-                        
-                        switch message.messageType {
-                        case .data:
-                            if message.wbit {
-                                let response = builder.buildResponseData(primaryMessage: message, stream: message.stream, function: message.function  + 1, wbit: false)
-                                try await transactor.putDidReceive(message: response, connection: connection)
-                            }
-                            
-                        case .selectRequest:
-                            let response = builder.buildSelectResponse(selectRequest: message, selectStatus: .success)
-                            try await transactor.putDidReceive(message: response, connection: connection)
-
-                        case .deselectRequest:
-                            let response = builder.buildDeselectResponse(deselectRequest: message, deselectStatus: .success)
-                            try await transactor.putDidReceive(message: response, connection: connection)
-
-                        case .linktestRequest:
-                            let response = builder.buildLinktestResponse(linktestRequest: message)
-                            try await transactor.putDidReceive(message: response, connection: connection)
-                            
-                        default:
-                            // nothing
-                            break
-                        }
+                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
+                
+                switch message.messageType {
+                case .data:
+                    if message.wbit {
+                        let response = builder.buildResponseData(primaryMessage: message, stream: message.stream, function: message.function  + 1, wbit: false)
+                        await transactor.yield(receiveMessage: response, connection: connection)
                     }
-                    catch {
-                        Issue.record("reply error")
-                    }
+                    
+                case .selectRequest:
+                    let response = builder.buildSelectResponse(selectRequest: message, selectStatus: .success)
+                    await transactor.yield(receiveMessage: response, connection: connection)
+
+                case .deselectRequest:
+                    let response = builder.buildDeselectResponse(deselectRequest: message, deselectStatus: .success)
+                    await transactor.yield(receiveMessage: response, connection: connection)
+
+                case .linktestRequest:
+                    let response = builder.buildLinktestResponse(linktestRequest: message)
+                    await transactor.yield(receiveMessage: response, connection: connection)
+                    
+                default:
+                    // nothing
+                    break
                 }
             }
-            
-            transactor.onDidReceiveMessage = { message, connection in
+        }
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.didReceiveMessageStream()
+            for await _ in stream {
                 Issue.record("did-receive error")
             }
-            
+        }
+        
+        do {
             let sessionId: UInt16 = 100
             let builder = hostMessageBuilder()
             let connection = networkConnection()
@@ -137,25 +139,29 @@ struct HSMSMessageTransactorTest {
     
     @Test func testSuccessReply() async throws {
         
-        let transactor = HSMSMessageTransactor()
+        let transactor = self.transactor(timeoutT3: .seconds(45.0), timeoutT6: .seconds(5.0))
         
-        do {
-            transactor.timeoutT3 = { 45.0 }
-            transactor.timeoutT6 = {  5.0 }
-            
-            transactor.onWillSendMessage = { message, connection in
-                do {
-                    try await transactor.putDidSend(message: message, connection: connection, error: nil)
-                }
-                catch {
-                    Issue.record("will-send error")
-                }
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.willSendMessageStream()
+            for await value in stream {
+                let message = value.message
+                let connection = value.connection
+                
+                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
             }
-            
-            transactor.onDidReceiveMessage = { message, connection in
+        }
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.didReceiveMessageStream()
+            for await _ in stream {
                 Issue.record("did-receive error")
             }
-            
+        }
+        
+        
+        do {
             let sessionId: UInt16 = 100
             let hostBuilder = hostMessageBuilder()
             let equipBuilder = equipMessageBuilder()
@@ -200,55 +206,102 @@ struct HSMSMessageTransactorTest {
         }
     }
     
-    @Test func testPutPrimaryMessage() async throws {
+    @Test func testReceivePrimaryMessage() async throws {
         
-        let transactor = HSMSMessageTransactor()
-        var receiveMessages: [HSMSMessage] = []
+        let transactor = self.transactor(timeoutT3: .seconds(45.0), timeoutT6: .seconds(5.0))
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.willSendMessageStream()
+            for await _ in stream {
+                Issue.record("did-receive error")
+            }
+        }
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.didReceiveMessageStream()
+            
+            do {
+                #expect(try await stream.take().message.messageType == .data)
+                #expect(try await stream.take().message.messageType == .selectRequest)
+                #expect(try await stream.take().message.messageType == .deselectRequest)
+                #expect(try await stream.take().message.messageType == .linktestRequest)
+                #expect(try await stream.take().message.messageType == .separateRequest)
+            }
+            catch {
+                Issue.record(error)
+            }
+        }
+        
+        let sessionId: UInt16 = 100
+        let builder = equipMessageBuilder()
+        let connection = networkConnection()
+        
+        // data
+        let dataRequest = builder.buildPrimaryData(sessionId: sessionId, stream: 1, function: 13, wbit: true)
+        await transactor.yield(receiveMessage: dataRequest, connection: connection)
+        
+        // select.req
+        let selectRequest = builder.buildSelectRequest(sessionId: sessionId)
+        await transactor.yield(receiveMessage: selectRequest, connection: connection)
+        
+        // deselect.req
+        let deselectRequest = builder.buildDeselectRequest(sessionId: sessionId)
+        await transactor.yield(receiveMessage: deselectRequest, connection: connection)
+        
+        // linktest.req
+        let linktestRequest = builder.buildLinktestRequest(sessionId: sessionId)
+        await transactor.yield(receiveMessage: linktestRequest, connection: connection)
+        
+        // separate.req
+        let separateRequest = builder.buildSeparateRequest(sessionId: sessionId)
+        await transactor.yield(receiveMessage: separateRequest, connection: connection)
+        
+        // finally
+        await transactor.shutdown()
+    }
+    
+    @Test func testTimeoutT3() async throws {
+        
+        let transactor = self.transactor(timeoutT3: .seconds(0.10), timeoutT6: .seconds(5.0))
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.willSendMessageStream()
+            for await value in stream {
+                let message = value.message
+                let connection = value.connection
+                
+                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
+            }
+        }
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.didReceiveMessageStream()
+            for await _ in stream {
+            }
+        }
         
         do {
-            transactor.timeoutT3 = { 45.0 }
-            transactor.timeoutT6 = {  5.0 }
-            
-            transactor.onWillSendMessage = { message, connection in
-                Issue.record("will-send error")
-            }
-            
-            transactor.onDidReceiveMessage = { message, _ in
-                receiveMessages.append(message)
-            }
-            
             let sessionId: UInt16 = 100
-            let builder = equipMessageBuilder()
+            let builder = hostMessageBuilder()
             let connection = networkConnection()
             
             // data
             let dataRequest = builder.buildPrimaryData(sessionId: sessionId, stream: 1, function: 13, wbit: true)
-            try await transactor.putDidReceive(message: dataRequest, connection: connection)
+            let _ = try await transactor.send(message: dataRequest, connection: connection)
             
-            // select.req
-            let selectRequest = builder.buildSelectRequest(sessionId: sessionId)
-            try await transactor.putDidReceive(message: selectRequest, connection: connection)
-            
-            // deselect.req
-            let deselectRequest = builder.buildDeselectRequest(sessionId: sessionId)
-            try await transactor.putDidReceive(message: deselectRequest, connection: connection)
-            
-            // linktest.req
-            let linktestRequest = builder.buildLinktestRequest(sessionId: sessionId)
-            try await transactor.putDidReceive(message: linktestRequest, connection: connection)
-            
-            // separate.req
-            let separateRequest = builder.buildSeparateRequest(sessionId: sessionId)
-            try await transactor.putDidReceive(message: separateRequest, connection: connection)
-            
-            #expect(receiveMessages[0].messageType == .data)
-            #expect(receiveMessages[1].messageType == .selectRequest)
-            #expect(receiveMessages[2].messageType == .deselectRequest)
-            #expect(receiveMessages[3].messageType == .linktestRequest)
-            #expect(receiveMessages[4].messageType == .separateRequest)
+            Issue.record("timeoutT3-failed")
             
             // finally
             await transactor.shutdown()
+        }
+        catch HSMSWaitReplyError.timeoutT3(_, _) {
+            // error finally
+            await transactor.shutdown()
+            // success
         }
         catch {
             // error finally
@@ -258,10 +311,79 @@ struct HSMSMessageTransactorTest {
         }
     }
     
+    @Test func testTimeoutT6() async throws {
+        
+        let transactor = self.transactor(timeoutT3: .seconds(45.0), timeoutT6: .seconds(0.10))
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.willSendMessageStream()
+            for await value in stream {
+                let message = value.message
+                let connection = value.connection
+                
+                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
+            }
+        }
+        
+        Task { [weak transactor] in
+            guard let transactor = transactor else { return }
+            let stream = await transactor.didReceiveMessageStream()
+            for await _ in stream {
+            }
+        }
+        
+        let sessionId: UInt16 = 100
+        let builder = hostMessageBuilder()
+        let connection = networkConnection()
+        
+        do {
+            // select.req
+            let selectRequest = builder.buildSelectRequest(sessionId: sessionId)
+            let _ = try await transactor.send(message: selectRequest, connection: connection)
+            
+            Issue.record("timeoutT6-failed")
+        }
+        catch HSMSWaitReplyError.timeoutT6(_, _) {
+            // error success
+        }
+        catch {
+            Issue.record("error finally")
+        }
+        do {
+            // deselect.req
+            let deselectRequest = builder.buildDeselectRequest(sessionId: sessionId)
+            let _ = try await transactor.send(message: deselectRequest, connection: connection)
+            
+            Issue.record("timeoutT6-failed")
+        }
+        catch HSMSWaitReplyError.timeoutT6(_, _) {
+            // error success
+        }
+        catch {
+            Issue.record("error finally")
+        }
+        do {
+            // linktest.req
+            let linktestRequest = builder.buildLinktestRequest(sessionId: sessionId)
+            let _ = try await transactor.send(message: linktestRequest, connection: connection)
+            
+            Issue.record("timeoutT6-failed")
+        }
+        catch HSMSWaitReplyError.timeoutT6(_, _) {
+            // error success
+        }
+        catch {
+            Issue.record("error finally")
+        }
+        
+        await transactor.shutdown()
+    }
+    
     // tests
-    // timeout-T3
-    // timeout-T3
-    // shutdown
+    // reject
+    // receive-shutdown
     // send-error
+    // send-shutdown
     
 }

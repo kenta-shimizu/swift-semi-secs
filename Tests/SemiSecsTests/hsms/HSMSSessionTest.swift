@@ -18,15 +18,11 @@ struct HSMSSessionTest {
         let session = HSMSSession()
         
         let messageBuilder = HSMSSSMessageBuilder()
-        messageBuilder.isEquipment = { return true }
+        messageBuilder.isEquipment = { true }
         
         let transactor = HSMSMessageTransactor()
-        transactor.timeoutT3 = { return 45.0 }
-        transactor.timeoutT6 = { return  5.0 }
-        transactor.onWillSendMessage = { _, _ in
-        }
-        transactor.onDidReceiveMessage = { _, _ in
-        }
+        transactor.timeoutT3 = { return .seconds(45.0) }
+        transactor.timeoutT6 = { return .seconds(5.0) }
         
         session.hsmsSessionId = { return sessionId }
         session.hsmsMessageBuilder = { return messageBuilder }

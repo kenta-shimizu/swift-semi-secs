@@ -7,143 +7,159 @@
 
 import Testing
 import Foundation
+import Network
 @testable import SemiSecs
 
 struct HSMSMessagePipelineTest {
-
+    
+    private func networkConnection() -> NWConnection {
+        let host = NWEndpoint.Host("127.0.0.1")
+        let port = NWEndpoint.Port(integerLiteral: 5000)
+        let parameters = NWParameters.tcp
+        
+        let connection = NWConnection(host: host, port: port, using: parameters)
+        return connection
+    }
+    
+    private func createPipeline(timeoutT8: Duration) -> HSMSMessagePipeline {
+        let instance = HSMSMessagePipeline(connection: self.networkConnection())
+        instance.timeoutT8 = { timeoutT8 }
+        return instance
+    }
+    
     @Test func testSuccess() async throws {
+        let pipeline = self.createPipeline(timeoutT8: .seconds(5.0))
         
-        var sinkMessages: [HSMSMessage] = []
-        
-        let pipeline = HSMSMessagePipeline()
-        pipeline.timeoutT8 = { 0.5 }
-        pipeline.onDidSink = {
-            sinkMessages.append($0)
+        Task {
+            try await Task.sleep(for: .seconds(0.10))
+            
+            // SELECT.req
+            pipeline.yield(data: Data([0x00, 0x00, 0x00, 0x0A]))
+            pipeline.yield(data: Data([0x01, 0x02,
+                                       0x00, 0x00,
+                                       0x00, 0x01,
+                                       0x01, 0x02, 0x03, 0x04]))
+            
+            try await Task.sleep(for: .seconds(0.10))
+            
+            // DATA
+            pipeline.yield(data: Data([0x00, 0x00, 0x00, 0x0C]))
+            pipeline.yield(data: Data([0x01, 0x02,
+                                       0x81, 0x0D,
+                                       0x00, 0x00,
+                                       0x05, 0x06, 0x07, 0x08]))
+            pipeline.yield(data: Data([0x01, 0x00]))
+            
+            pipeline.shutdown()
         }
         
-        do {
-            await pipeline.start()
-            
-            try await pipeline.put(source: Data([0x00, 0x00, 0x00, 0x0A,
-                                                 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x01, 0x01, 0x23, 0x00, 0x01]))
-            
-            try await Task.sleep(for: .seconds(1.5))
-            
-            try await pipeline.put(source: Data([0x00, 0x00, 0x00, 0x0C,
-                                                 0x01, 0x23, 0x01, 0x0D, 0x00, 0x00, 0x01, 0x23, 0x00, 0x02,
-                                                 0x01, 0x00]))
-            
-            try await Task.sleep(for: .seconds(1.5))
-            
-            await pipeline.shutdown()
-        }
-        catch {
-            await pipeline.shutdown()
+        let stream = pipeline.hsmsMessageAndNWConnectionStream()
+        var results: [HSMSMessage] = []
+        for await result in stream {
+            switch result {
+            case .success(let messageAndConnection):
+                results.append(messageAndConnection.message)
+            case .failure(let error):
+                Issue.record(error)
+            }
         }
         
-        #expect(sinkMessages[0].messageType == .selectRequest)
-        #expect(sinkMessages[1].messageType == .data)
-        #expect(sinkMessages[1].stream == 1)
-        #expect(sinkMessages[1].function == 13)
-        #expect(sinkMessages[1].wbit == false)
-        #expect(sinkMessages[1].secs2Body?.type == .list)
-        #expect(sinkMessages[1].secs2Body?.count == 0)
+        #expect(results[0].messageType == .selectRequest)
+        #expect(results[1].messageType == .data)
+        #expect(results[1].stream == 1)
+        #expect(results[1].function == 13)
+        #expect(results[1].wbit == true)
+        #expect(results[1].secs2Body?.type == .list)
+        
+    }
+    
+    @Test func testIllegalReceiveLengthByte() async throws {
+        let pipeline = self.createPipeline(timeoutT8: .seconds(5.0))
+        
+        Task {
+            try await Task.sleep(for: .seconds(0.10))
+            
+            // SELECT.req
+            pipeline.yield(data: Data([0x00, 0x00, 0x00, 0x09]))
+            pipeline.yield(data: Data([0x01, 0x02,
+                                       0x00, 0x00,
+                                       0x00, 0x01,
+                                       0x01, 0x02, 0x03, 0x04]))
+            
+            try await Task.sleep(for: .seconds(0.10))
+            
+            // DATA
+            pipeline.yield(data: Data([0x00, 0x00, 0x00, 0x0C]))
+            pipeline.yield(data: Data([0x01, 0x02,
+                                       0x81, 0x0D,
+                                       0x00, 0x00,
+                                       0x05, 0x06, 0x07, 0x08]))
+            pipeline.yield(data: Data([0x01, 0x00]))
+            
+            pipeline.shutdown()
+        }
+        
+        let stream = pipeline.hsmsMessageAndNWConnectionStream()
+        var results: [Error] = []
+        for await result in stream {
+            switch result {
+            case .success:
+                Issue.record()
+            case .failure(let error):
+                results.append(error)
+            }
+        }
+        
+        #expect(results.count == 1)
+        #expect(results[0] as! HSMSReceiveError == .illegalReceiveLengthByte)
         
     }
     
     @Test func testTimeoutT8() async throws {
+        let pipeline = self.createPipeline(timeoutT8: .seconds(0.10))
         
-        var sinkMessages: [HSMSMessage] = []
-        var error: HSMSError? = nil
-        
-        let pipeline = HSMSMessagePipeline()
-        pipeline.timeoutT8 = { 0.5 }
-        pipeline.onDidSink = {
-            sinkMessages.append($0)
+        Task {
+            try await Task.sleep(for: .seconds(0.10))
+            
+            // SELECT.req
+            pipeline.yield(data: Data([0x00, 0x00, 0x00, 0x0A]))
+            
+            // timeoutT8
+            try await Task.sleep(for: .seconds(0.50))
+            
+            pipeline.yield(data: Data([0x01, 0x02,
+                                       0x00, 0x00,
+                                       0x00, 0x01,
+                                       0x01, 0x02, 0x03, 0x04]))
+            
+            try await Task.sleep(for: .seconds(0.10))
+            
+            // DATA
+            pipeline.yield(data: Data([0x00, 0x00, 0x00, 0x0C]))
+            pipeline.yield(data: Data([0x01, 0x02,
+                                       0x81, 0x0D,
+                                       0x00, 0x00,
+                                       0x05, 0x06, 0x07, 0x08]))
+            pipeline.yield(data: Data([0x01, 0x00]))
+            
+            pipeline.shutdown()
         }
-        pipeline.onDidDetectHSMSError = {
-            if case .timeoutT8 = $0 {
-                error = $0
+        
+        let stream = pipeline.hsmsMessageAndNWConnectionStream()
+        var results: [Error] = []
+        for await result in stream {
+            switch result {
+            case .success:
+                Issue.record()
+            case .failure(let error):
+                results.append(error)
             }
         }
         
-        do {
-            await pipeline.start()
-            
-            try await pipeline.put(source: Data([0x00, 0x00, 0x00, 0x0A,
-                                                 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x01, 0x01, 0x23, 0x00, 0x01]))
-            
-            try await Task.sleep(for: .seconds(1.5))
-            
-            try await pipeline.put(source: Data([0x00]))
-            
-            try await Task.sleep(for: .seconds(1.5))    // timeout-T8
-            
-            try await pipeline.put(source: Data([0x00, 0x00, 0x0C,
-                                                 0x01, 0x23, 0x01, 0x0D, 0x00, 0x00, 0x01, 0x23, 0x00, 0x02,
-                                                 0x01, 0x00]))
-            
-            Issue.record("timeoutError")
-            
-            try await Task.sleep(for: .seconds(1.5))
-            
-            await pipeline.shutdown()
-        }
-        catch {
-            // through here
-            await pipeline.shutdown()
-        }
+        #expect(results.count == 1)
+        print(results[0])
+        #expect(results[0] as? HSMSReceiveError == .timeoutT8)
         
-        #expect(sinkMessages.count == 1)
-        #expect(error != nil)
-    }
-    
-    @Test func testIllegalReceiveLengthByte() async throws {
-        
-        var sinkMessages: [HSMSMessage] = []
-        var error: HSMSError? = nil
-        
-        let pipeline = HSMSMessagePipeline()
-        pipeline.timeoutT8 = { 0.5 }
-        pipeline.onDidSink = {
-            sinkMessages.append($0)
-        }
-        pipeline.onDidDetectHSMSError = {
-            if case .illegalReceiveLengthByte = $0 {
-                error = $0
-            }
-        }
-        
-        do {
-            await pipeline.start()
-            
-            try await pipeline.put(source: Data([0x00, 0x00, 0x00, 0x0A,
-                                                 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x01, 0x01, 0x23, 0x00, 0x01]))
-            
-            try await Task.sleep(for: .seconds(1.5))
-            
-            try await pipeline.put(source: Data([0x00, 0x00, 0x00, 0x09,
-                                                 0x01, 0x23, 0x01, 0x0D, 0x00, 0x00, 0x01, 0x23, 0x00, 0x02,
-                                                 0x01, 0x00]))  // Illegal-Receive-length-byte
-            
-            try await Task.sleep(for: .seconds(1.5))
-            
-            try await pipeline.put(source: Data([0x00, 0x00, 0x00, 0x0A,
-                                                 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x05, 0x01, 0x23, 0x00, 0x03]))  // put Linktest.req, already shutdowned.
-            
-            Issue.record("IllegalReceiveLengthByteError")
-            
-            try await Task.sleep(for: .seconds(1.5))
-
-            await pipeline.shutdown()
-        }
-        catch {
-            // through here
-            await pipeline.shutdown()
-        }
-        
-        #expect(sinkMessages.count == 1)
-        #expect(error != nil)
     }
 
 }

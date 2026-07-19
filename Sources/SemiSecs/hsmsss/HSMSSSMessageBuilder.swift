@@ -8,9 +8,9 @@
 import Foundation
 import Synchronization
 
-public final class HSMSSSMessageBuilder: HSMSMessageBuildable {
+public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
     
-    public var isEquipment: (() -> Bool)?
+    public nonisolated(unsafe) var isEquipment: (() -> Bool)?
     private let systemLower2BytesCounter: Atomic<UInt16>
     
     public init() {

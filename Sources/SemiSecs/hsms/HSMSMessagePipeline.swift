@@ -6,89 +6,87 @@
 //
 
 import Foundation
+import Network
 
-internal actor HSMSMessagePipeline: AsyncShutdownable {
+internal final class HSMSMessagePipeline: Sendable {
     
-    private let queue: AsyncQueue<UInt8> = AsyncQueue()
-    internal nonisolated(unsafe) var timeoutT8: (() -> TimeInterval)?
-    internal nonisolated(unsafe) var onDidSink: ((HSMSMessage) async -> Void)?
-    internal nonisolated(unsafe) var onDidDetectHSMSError: ((HSMSError) async -> Void)?
+    private let (byteStream, byteContinuation) = AsyncStream.makeStream(of: UInt8.self)
     
-    internal init() {
+    private let connection: NWConnection
+    internal nonisolated(unsafe) var timeoutT8: (@Sendable () -> Duration)?
+    
+    internal init(connection: NWConnection) {
+        self.connection = connection
         self.timeoutT8 = nil
-        self.onDidDetectHSMSError = nil
-        self.onDidSink = nil
     }
     
-    internal func start() async {
-        Task.detached {
-            do {
-                let lengthDataCount = 4
-                let headerDataCount = 10
-                
-                while !Task.isCancelled {
-                    
-                    var lengthData = try await self.take(maxDataCount: lengthDataCount)
-                    
-                    while lengthData.count < lengthDataCount {
-                        try await lengthData.append(self.poll(maxDataCount: (lengthDataCount - lengthData.count)))
+    internal func shutdown() {
+        self.byteContinuation.finish()
+    }
+    
+    internal func yield(data: Data) {
+        self.byteContinuation.yield(data: data)
+    }
+    
+    internal func hsmsMessageAndNWConnectionStream() -> AsyncStream<Result<HSMSMessageAndNWConnection, Error>> {
+        AsyncStream<Result<HSMSMessageAndNWConnection, Error>> { continuation in
+            Task.detached { [weak self] in
+                guard let self = self else { return }
+                do {
+                    while !Task.isCancelled {
+                        let lengthData = try await self.readLengthData()
+                        let bodyDataCount = ((Int(lengthData[0]) << 24) | (Int(lengthData[1]) << 16) | (Int(lengthData[2]) << 8) | Int(lengthData[3]))
+                        guard bodyDataCount >= 10 else {
+                            throw HSMSReceiveError.illegalReceiveLengthByte
+                        }
+                        let headerData = try await self.readHeaderData()
+                        let bodyData = try await self.readBodyData(length: bodyDataCount - 10)
+                        let message = HSMSMessageDecoder.shared.decode(header10Bytes: headerData, secs2BodyData: bodyData)
+                        let hsmsMessageAndNWConnection = HSMSMessageAndNWConnection(message: message, connection: self.connection)
+                        continuation.yield(.success(hsmsMessageAndNWConnection))
                     }
-                    
-                    let bodyDataCount = ((Int(lengthData[0]) << 24) | (Int(lengthData[1]) << 16) | (Int(lengthData[2]) << 8) | Int(lengthData[3])) - headerDataCount
-                    
-                    guard bodyDataCount >= 0 else {
-                        throw HSMSError.illegalReceiveLengthByte
-                    }
-                    
-                    var headerData = Data([])
-                    while headerData.count < headerDataCount {
-                        try await headerData.append(self.poll(maxDataCount: (headerDataCount - headerData.count)))
-                    }
-                    
-                    var bodyData = Data([])
-                    while bodyData.count < bodyDataCount {
-                        try await bodyData.append(self.poll(maxDataCount: (bodyDataCount - bodyData.count)))
-                    }
-                    
-                    let message = HSMSMessageDecoder.shared.decode(header10Bytes: headerData, secs2BodyData: bodyData)
-                    
-                    await self.onDidSink?(message)
                 }
+                catch let error as HSMSReceiveError {
+                    continuation.yield(.failure(error))
+                }
+                catch {
+                }
+                
+                continuation.finish()
             }
-            catch let error as HSMSError {
-                await self.onDidDetectHSMSError?(error)
-            }
-            catch {
-                // ignore
-            }
-            
-            await self.shutdown()
         }
     }
     
-    private func take(maxDataCount: Int) async throws -> Data {
-        return try await self.queue.take(maxDataCount: maxDataCount)
-    }
-    
-    private func poll(maxDataCount: Int) async throws -> Data {
-        guard let timeout = self.timeoutT8?() else {
-            throw AsyncShutdownError.alreadyShutdowned
+    private func pollByte() async throws -> UInt8 {
+        guard let result = try await self.byteStream.poll(timeout: self.timeoutT8!()) else {
+            throw HSMSReceiveError.timeoutT8;
         }
-        guard let data = try await self.queue.poll(maxDataCount: maxDataCount, timeout: timeout) else {
-            throw HSMSError.timeoutT8
+        return result;
+    }
+    
+    private func readLengthData() async throws -> Data {
+        var data = Data([])
+        data.append(try await self.byteStream.take());
+        while data.count < 4 {
+            data.append(try await self.pollByte());
         }
-        return data
+        return data;
     }
     
-    internal func shutdown() async {
-        await self.queue.shutdown()
-        self.timeoutT8 = nil
-        self.onDidDetectHSMSError = nil
-        self.onDidSink = nil
+    private func readHeaderData() async throws -> Data {
+        var data = Data([])
+        while data.count < 10 {
+            data.append(try await self.pollByte());
+        }
+        return data;
     }
     
-    internal func put(source: Data) async throws {
-        try await self.queue.put(data: source)
+    private func readBodyData(length: Int) async throws -> Data {
+        var data = Data([])
+        while data.count < length {
+            data.append(try await self.pollByte());
+        }
+        return data;
     }
     
 }

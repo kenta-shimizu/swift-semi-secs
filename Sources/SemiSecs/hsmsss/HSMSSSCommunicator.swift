@@ -6,982 +6,753 @@
 //
 
 import Foundation
+import os
 import Network
 
-public class HSMSSSCommunicator: HSMSCommunicator, @unchecked Sendable {
+public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SECSMessageReceivable, HSMSConnectionStateDetectable, Sendable {
     
-    internal class HSMSSSMessageTransaction: HSMSMessageTransaction, @unchecked Sendable {
-        
-        private weak var communicator: HSMSSSCommunicator?
-        internal let willSendQueue = BlockingQueue<HSMSMessage>()
-        internal let sendResultQueue = BlockingQueue<Result<HSMSMessage, Error>>()
-        
-        internal init(communicator: HSMSSSCommunicator) {
-            self.communicator = communicator
-            super.init()
-        }
-        
-        internal override func put(receiveMessage: HSMSMessage) throws -> TransactionPutResult {
-            self.putDebugLog(type: .receiveHSMSMessage, value: receiveMessage)
-            return try super.put(receiveMessage: receiveMessage)
-        }
-        
-        internal override func operateSend(message: HSMSMessage) throws {
-            self.putDebugLog(type: .willSendHSMSMessage, value: message)
-            do {
-                try willSendQueue.put(message)
-            }
-            catch {
-//                let error = HSMSError.sendFailedByTransactionShutdown(message: message)
-//                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
-//                throw error
-            }
-        }
-        
-        internal override func operateWaitSendCompleted(message: HSMSMessage) throws {
-            do {
-                let result = try self.sendResultQueue.take()
-                switch result {
-                case .success:
-                    return
-                case .failure(let error):
-                    throw error
-                }
-            }
-            catch _ as ShutdownError {
-                
-                #warning("TODO")
-                
-//                let error = HSMSError.sendFailedByTransactionShutdown(message: message)
-//                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
-//                throw error
-            }
-            catch {
-                throw error
-            }
-        }
-        
-        internal override func operateReceive(primaryMessage: HSMSMessage, receiveQueue: BlockingQueue<HSMSMessage>) throws -> HSMSMessage {
-            do {
-                switch primaryMessage.messageType {
-                case .data:
-                    if let r = try receiveQueue.poll(timeout: self.communicator!.config.timeout.t3) {
-                        return r
-                    } else {
-//                        let error = HSMSError.timeoutT3(primaryMessage: primaryMessage)
-//                        self.putDebugLog(type: .errorHSMSTimeoutT3, value: error)
-//                        throw error
-                    }
-                default:
-                    if let r = try receiveQueue.poll(timeout: self.communicator!.config.timeout.t6) {
-                        return r
-                    } else {
-//                        let error = HSMSError.timeoutT6(primaryMessage: primaryMessage)
-//                        self.putDebugLog(type: .errorHSMSTimeoutT6, value: error)
-//                        throw error
-                    }
-                }
-            }
-//            catch error as ShutdownError {
-//                
-//                #warning("TODO")
-//                
-////                let error = HSMSError.waitReplyFailedByTransactionShutdown(primaryMessage: primaryMessage)
-////                self.putDebugLog(type: .errorHSMSSendTransactionShutdown, value: error)
-////                throw error
-//                throw error
-//            }
-            catch {
-                throw error
-            }
-            
-            throw AsyncShutdownError.alreadyShutdowned
-        }
-        
-        internal func putDebugLog(type: SECSDebugLog.SECSDebugLogType, value: CustomDebugStringConvertible) {
-            self.communicator?.putDebugLog(type: type, value: value)
-        }
-    }
-    
-    internal class HSMSSSMessageReceiver: HSMSMessageReceiver, @unchecked Sendable {
-        
-        private weak var comminicator: HSMSSSCommunicator?
-        
-        internal init(communicator: HSMSSSCommunicator) {
-            self.comminicator = communicator
-            super.init()
-        }
-        
-        internal override func getTiemoutT8() -> Double {
-            if let comm = self.comminicator {
-                return comm.config.timeout.t8
-            } else {
-                return Double.greatestFiniteMagnitude
-            }
-        }
-        
-    }
-    
-    internal class HSMSSSLinktest: HSMSLinktest {
-        
-        private weak var communicator: HSMSSSCommunicator?
-        
-        internal init(communicator: HSMSSSCommunicator) {
-            self.communicator = communicator
-            super.init()
-        }
-        
-        internal override func getDoLinktest() -> Bool {
-            if let comm = self.communicator {
-                return comm.config.doLinktest
-            } else {
-                return false
-            }
-        }
-        
-        internal override func getLinktestCycle() -> Double {
-            if let comm = self.communicator {
-                return comm.config.linktestCycle
-            } else {
-                return Double.greatestFiniteMagnitude
-            }
-        }
-        
-    }
-    
-    internal class HSMSSSSession: HSMSSession {
-        
-        internal weak var communicator: HSMSSSCommunicator?
-        
-        internal override init() {
-            self.communicator = nil
-            super.init()
-        }
-        
-        public override var sessionId: UInt16 {
-            return self.communicator!.config.sessionId
-        }
-        
-        internal override var messageBuilder: any HSMSMessageBuildable {
-            return self.communicator!.messageBuilder
-        }
-        
-        @discardableResult
-        public override func send(hsmsMessage: HSMSMessage) throws -> HSMSMessage? {
-            guard let transaction = self.transaction else {
-//                throw HSMSError.sendFailedNotConnectedError(message: hsmsMessage)
-                return nil
-            }
-            return try transaction.send(message: hsmsMessage)
-        }
-        
-        internal override func putDebugLog(connectionState: HSMSConnectionState) {
-            if let comm = self.communicator {
-                let value = "{\"state\": \"\(connectionState.rawValue)\", \"sessionId\": \(self.sessionId)}"
-                comm.putDebugLog(type: .didChangeHSMSConnectionState, value: value)
-            }
-        }
-    }
-    
-    public struct HSMSSSCommunicatorConfig {
-        
-        public var ipAddress: NWEndpoint.Host?
-        public var port: NWEndpoint.Port
+    /// HSMS-SS communicator config.
+    public struct HSMSSSCommunicatorConfig: HSMSCommunicatorConfig {
         
         private var _sessionId: UInt16
+        private var _isEquipment: Bool
+        private var _timeout: SECSCommunicatorTimeoutConfig
+        private var _connectionMode: HSMSConnectionMode
+        private var _ipAddress: NWEndpoint.Host?
+        private var _port: NWEndpoint.Port
+        private var _rebindDuration: Duration
+        private var _doLinktest: Bool
+        private var _linktestDuration: Duration
+        
+        internal init() {
+            self._sessionId = 10
+            self._isEquipment = true
+            self._timeout = SECSCommunicatorTimeoutConfig()
+            self._connectionMode = .passive
+            self._ipAddress = nil
+            self._port = 5000
+            self._rebindDuration = .seconds(10.0)
+            self._doLinktest = false
+            self._linktestDuration = .seconds(120.0)
+        }
+        
+        /// Session-ID.
         public var sessionId: UInt16 {
             get {
                 return self._sessionId
             }
             set {
-                guard (0...0x7FFF).contains(newValue) else {
-                    fatalError("sessionId set value in (0...0x7FFF). sessionId: \"\(newValue)\"")
+                guard newValue <= 0x7FFF else {
+                    fatalError("Session-ID is 0...0x7FFF")
                 }
                 self._sessionId = newValue
             }
         }
         
-        public var connectionMode: HSMSConnectionMode
-        public var isEquipment: Bool
-        public var timeout: SECSCommunicatorTimeoutConfig = SECSCommunicatorTimeoutConfig()
-        
-        private var _rebindTimeIntervalIfPassiveMode: TimeInterval
-        public var rebindTimeIntervalIfPassiveMode: TimeInterval {
+        public var isEquipment: Bool {
             get {
-                return self._rebindTimeIntervalIfPassiveMode
+                return self._isEquipment
             }
             set {
-                guard newValue > 0.0 else {
-                    fatalError("rebindTimeIntervalIfPassiveMode set value >0.0")
-                }
-                self._rebindTimeIntervalIfPassiveMode = newValue
+                self._isEquipment = newValue
             }
         }
         
-        public var doLinktest: Bool
-        
-        private var _linktestCycle: TimeInterval
-        public var linktestCycle: TimeInterval {
+        public var timeout: SECSCommunicatorTimeoutConfig {
             get {
-                return self._linktestCycle
+                return self._timeout
             }
             set {
-                guard newValue > 0.0 else {
-                    fatalError("linktestCycle set value >0.0")
-                }
-                self._linktestCycle = newValue
+                self._timeout = newValue
             }
         }
         
-        public init() {
-            self.ipAddress = nil
-            self.port = 5000
-            self._sessionId = 10
-            self.connectionMode = .passive
-            self.isEquipment = true
-            self._rebindTimeIntervalIfPassiveMode = 10.0
-            self.doLinktest = false
-            self._linktestCycle = 120.0
-        }
-    }
-    
-    
-    private let condition = NSCondition()
-    private var isDidStart: Bool
-    private var isDidCancel: Bool
-    
-    public var config: HSMSSSCommunicatorConfig = HSMSSSCommunicatorConfig()
-    fileprivate let messageBuilder: HSMSSSMessageBuilder = HSMSSSMessageBuilder()
-    fileprivate let hsmsSession: HSMSSSSession = HSMSSSSession()
-    
-    
-    public override init(label: String? = nil) {
-        self.isDidStart = false
-        self.isDidCancel = false
-        super.init(label: label)
-        self.messageBuilder.isEquipment = {
-            return self.config.isEquipment
-        }
-        self.hsmsSession.communicator = self;
-    }
-    
-    /**
-     notify HSMS-State update
-     */
-    public var stateUpdateHandler: (@Sendable (_ state: HSMSCommunicator.HSMSConnectionState) -> Void)? {
-        get {
-            return self.hsmsSession.stateUpdateHandler
-        }
-        set {
-            self.hsmsSession.stateUpdateHandler = newValue
-        }
-    }
-    
-    public var primaryMessageReceiveHandler: (@Sendable (_ message: HSMSMessage) -> Void)? {
-        get {
-            return self.hsmsSession.primaryMessageReceiveHandler
-        }
-        set {
-            self.hsmsSession.primaryMessageReceiveHandler = newValue
-        }
-    }
-    
-    public func send(hsmsMessage: HSMSMessage) throws -> HSMSMessage? {
-        return try self.hsmsSession.send(hsmsMessage: hsmsMessage)
-    }
-    
-    public func asyncSend(hsmsMessage: HSMSMessage) async -> Result<HSMSMessage?, Error> {
-        return await self.hsmsSession.asyncSend(hsmsMessage: hsmsMessage)
-    }
-    
-    public func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) throws -> HSMSMessage? {
-        return try self.hsmsSession.send(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
-    }
-    
-    public func send(smlMessage: inout SMLMessage) throws -> HSMSMessage? {
-        return try self.hsmsSession.send(smlMessage: smlMessage)
-    }
-    
-    public func asyncSend(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) async -> Result<HSMSMessage?, Error> {
-        return await self.hsmsSession.asyncSend(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
-    }
-    
-    public func asyncSend(smlMessage: inout SMLMessage) async -> Result<HSMSMessage?, Error> {
-        return await self.hsmsSession.asyncSend(smlMessage: smlMessage)
-    }
-    
-    public func reply(primaryMessage: inout HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) throws {
-        try self.hsmsSession.reply(primaryMessage: primaryMessage, stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
-    }
-    
-    public func reply(primaryMessage: inout HSMSMessage, smlMessage: inout SMLMessage) throws {
-        try self.hsmsSession.reply(primaryMessage: primaryMessage, smlMessage: smlMessage)
-    }
-    
-    public func asyncReply(primaryMessage: inout HSMSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: inout (any SECS2Body)?) async -> Result<HSMSMessage?, Error> {
-        return await self.hsmsSession.asyncReply(primaryMessage: primaryMessage, stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
-    }
-    
-    public func asyncReply(primaryMessage: HSMSMessage, smlMessage: SMLMessage) async -> Result<HSMSMessage?, Error> {
-        return await self.hsmsSession.asyncReply(primaryMessage: primaryMessage, smlMessage: smlMessage)
-    }
-    
-    public func sendLinktestRequest() throws -> HSMSMessage? {
-        return try self.hsmsSession.sendLinktestRequest()
-    }
-    
-    public func asyncSendLinktestRequest() async -> Result<HSMSMessage?, Error> {
-        return await self.hsmsSession.asyncSendLinktestRequest()
-    }
-    
-    public func start() {
-        
-        self.condition.lock()
-        defer {
-            self.condition.unlock()
+        public var connectionMode: HSMSConnectionMode {
+            get {
+                return self._connectionMode
+            }
+            set {
+                self._connectionMode = newValue
+            }
         }
         
-        guard !self.isDidCancel else {
-            //TODO throw error
-            return
+        public var ipAddress: NWEndpoint.Host? {
+            get {
+                return self._ipAddress
+            }
+            set {
+                self._ipAddress = newValue
+            }
         }
-        guard !self.isDidStart else {
-            //TODO throw error
-            return
-        }
-        self.isDidStart = true
         
-        DispatchQueue.global().async {
-            
-            self.hsmsSession.set(connectionState: .notConnected)
-            
-            while !self.isDidCancel {
+        public var port: NWEndpoint.Port {
+            get {
+                return self._port
+            }
+            set {
+                self._port = newValue
+            }
+        }
+        
+        public var rebindDuration: Duration {
+            get {
+                return self._rebindDuration
+            }
+            set {
+                guard newValue > .zero else {
+                    fatalError("rebindDuration set value >0.0")
+                }
+                 self._rebindDuration = newValue
+            }
+        }
+        
+        public var autoLinktest: Bool {
+            get {
+                return self._doLinktest
+            }
+            set {
+                self._doLinktest = newValue
+            }
+        }
+        
+        public var linktestDuration: Duration {
+            get {
+                return self._linktestDuration
+            }
+            set {
+                guard newValue > .zero else {
+                    fatalError("linktestTimeDuration set value >0.0")
+                }
+                self._linktestDuration = newValue
+            }
+        }
+    }
+    
+    // MARK: - let
+    
+    private let messageBuilder = HSMSSSMessageBuilder()
+    private let session = HSMSSession()
+    private let transactor = HSMSMessageTransactor()
+    private let startAndShutdown = StartAndShutdown()
+    private let (shutdownStream, shutdownContinuation) = AsyncStream.makeStream(of: Void.self)
+    private let (receiveWholeHSMSMessageStream, receiveWholeHSMSMessageContinuation) = AsyncStream.makeStream(of: HSMSMessageAndNWConnection.self)
+    
+    // MARK: - var
+    
+    private nonisolated(unsafe) var _onDidReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
+    
+    public nonisolated(unsafe) var config = HSMSSSCommunicatorConfig()
+    
+    public init() {
+        // messageBuilder
+        self.messageBuilder.isEquipment = { [weak self] in
+            return self!.config.isEquipment
+        }
+        
+        // transactor
+        self.transactor.timeoutT3 = { [weak self] in
+            return self!.config.timeout.t3
+        }
+        self.transactor.timeoutT6 = { [weak self] in
+            return self!.config.timeout.t6
+        }
+        
+        // session
+        self.session.hsmsSessionId = { [weak self] in
+            return self!.config.sessionId
+        }
+        self.session.hsmsMessageBuilder = { [weak self] in
+            return self!.messageBuilder
+        }
+        self.session.hsmsMessageTransactor = { [weak self] in
+            return self!.transactor
+        }
+        
+        self._onDidReceiveWholeHSMSMessage = nil
+    }
+    
+    deinit {
+        self.shutdown()
+    }
+    
+    public func start() throws {
+        try self.start(queue: DispatchQueue(label: "defaultDispatchQueueLabel"))
+    }
+    
+    public func start(queue: DispatchQueue) throws {
+        try self.startAndShutdown.start()
+        
+        // send HSMS-Message.
+        queue.async { [weak self] in
+            guard let self = self else { return }
+            Task {
+                let stream = await self.transactor.willSendMessageStream()
+                for await pair in stream {
+                    pair.connection.send(content: pair.message.data, contentContext: .defaultMessage, isComplete: true, completion: .contentProcessed({ error in
+                        Task {
+                            await self.transactor.yield(sendedMessage: pair.message, connection: pair.connection, error: error)
+                            if let error = error {
+                                Logger.nwConnection.error("\(error)")
+                            } else {
+                                Logger.sendedHSMSMessage.notice("\(String(describing: pair.message))")
+                            }
+                        }
+                    }))
+                }
                 
+                Logger.communicator.debug("send HSMS-Message finished.")
+            }
+        }
+        
+        // receive Primary-HSMS-Message and NWConnection pair pass to HSMSSession
+        Task { [weak self] in
+            guard let self = self else { return  }
+            let stream = await self.transactor.didReceiveMessageStream()
+            for await pair in stream {
                 switch self.config.connectionMode {
                 case .active:
-                    self.runActiveTask()
-                    
-                    do {
-                        self.condition.lock()
-                        defer {
-                            self.condition.unlock()
-                        }
-                        
-                        guard !self.isDidCancel else {
-                            return
-                        }
-                        
-                        print("WAIT-T5")
-                        
-                        self.condition.wait(until: Date().addingTimeInterval(self.config.timeout.t5))
-                        
-                        guard !self.isDidCancel else {
-                            return
-                        }
-                    }
-                    
+                    await self.session.receiveAsHSMSSSActive(message: pair.message, connection: pair.connection)
                 case .passive:
-                    self.runPassiveTask()
-                    
-                    do {
-                        self.condition.lock()
-                        defer {
-                            self.condition.unlock()
-                        }
-                        
-                        guard !self.isDidCancel else {
-                            return
-                        }
-                        
-                        print("WAIT-passive")
-                        self.condition.wait(until: Date().addingTimeInterval(self.config.rebindTimeIntervalIfPassiveMode))
-                        
-                        guard !self.isDidCancel else {
-                            return
-                        }
-                    }
+                    await self.session.receiveAsHSMSSSPassive(message: pair.message, connection: pair.connection)
                 }
             }
-        }
-    }
-    
-    public func cancel() {
-        self.condition.lock()
-        defer {
-            self.condition.unlock()
+            
+            Logger.communicator.debug("receive Primary-HSMS-Message and NWConnection pair pass to HSMSSession finished.")
         }
         
-        guard !self.isDidCancel else {
-            return
-        }
-        
-        self.isDidCancel = true
-        self.condition.broadcast()
-    }
-    
-    @discardableResult
-    public func waitUntilSelected() -> Bool {
-        return self.hsmsSession.waitUntilSelected()
-    }
-    
-    @discardableResult
-    public func waitUntilSelected(timeout: Double) -> Bool {
-        return self.hsmsSession.waitUntilSelected(timeout: timeout)
-    }
-    
-    @discardableResult
-    public func waitUntilNotSelected() -> Bool {
-        return self.hsmsSession.waitUntilNotSelected()
-    }
-    
-    @discardableResult
-    public func waitUntilNotSelected(timeout: Double) -> Bool {
-        return self.hsmsSession.waitUntilNotSelected(timeout: timeout)
-    }
-    
-    @discardableResult
-    func startAndWaitUntilSelected() -> Bool {
-        start()
-        return self.waitUntilSelected()
-    }
-    
-    private var alreadyConnectionDidCancel = false
-    
-    private func runActiveTask() {
-        
-        guard let ipAddress = self.config.ipAddress else {
-            return
-        }
-        
-        self.alreadyConnectionDidCancel = false
-        
-        let connectionStateChangeNotifier = StateChangeNotifier<NWConnection.State>(.preparing)
-        let hsmsMessageReceiver = HSMSSSMessageReceiver(communicator: self)
-        let receiveHSMSMessageQueue = BlockingQueue<HSMSMessage>()
-        let hsmsLinktest = HSMSSSLinktest(communicator: self)
-        
-        @Sendable func cancelConnection() {
-            self.condition.lock()
-            if !self.alreadyConnectionDidCancel {
-                self.condition.broadcast()
-            }
-            self.condition.unlock()
-        }
-        
-        self.condition.lock()
-        defer {
-            self.alreadyConnectionDidCancel = true
-            self.hsmsSession.set(connectionState: .notConnected, transaction: nil)
+        Task { [weak self] in
+            guard let self = self else { return }
             
-            connectionStateChangeNotifier.shutdown()
-            hsmsMessageReceiver.shutdown()
-            receiveHSMSMessageQueue.shutdown()
-            hsmsLinktest.shutdown()
-            
-            self.condition.unlock()
-        }
-        
-        DispatchQueue.global().async {
-            
-            let nwConnectionQueue = DispatchQueue.global()
-            let transaction = HSMSSSMessageTransaction(communicator: self)
-            
-            let connection = NWConnection(host: ipAddress, port: self.config.port, using: .tcp)
-            defer {
-                connection.cancel()
-            }
-            
-            @Sendable func connectionReceiving() {
-                connection.receive(minimumIncompleteLength: 1, maximumLength: 1024) { data, context, isComplete, error in
-                    
-                    if let _ = error {
-                        cancelConnection()
-                        return
-                    }
-                    if let data = data {
-                        do {
-                            try hsmsMessageReceiver.put(data)
-                            connectionReceiving()
-                        }
-                        catch {
-                            cancelConnection()
-                        }
-                    } else {
-                        cancelConnection()
-                    }
-                }
-            }
-            
-            DispatchQueue.global().async {
-                do {
-                    while true {
-                        let message = try hsmsMessageReceiver.take()
-
-                        let putResult = try transaction.put(receiveMessage: message)
-                        switch putResult {
-                        case .existReplyMeessage:
-                            break
-                        case .primaryMessage:
-                            try receiveHSMSMessageQueue.put(message)
-                        }
-                        
-                        hsmsLinktest.reset()
-                    }
-                }
-                catch {
-                    /* Nothing */
-                }
-
-            }
-            
-            connection.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    connectionStateChangeNotifier.set(state)
-                    
-                    DispatchQueue.global().async {
-                        connectionReceiving()
-                    }
-                    
-                default:
-                    connectionStateChangeNotifier.set(state)
-                }
-            }
-            
-            self.putDebugLog(type: .startHSMSNWConnection, value: "{ip: \(ipAddress), port: \(self.config.port), sessionId: \(self.hsmsSession.sessionId)}")
-            
-            connection.start(queue: nwConnectionQueue)
-            
-            @Sendable func connectionSending() {
-                do {
-                    let message = try transaction.willSendQueue.take()
-                    nwConnectionQueue.async {
-                        connection.send(content: message.data, completion: .contentProcessed({ error in
-                            
-                            do {
-                                if let error = error {
-//                                    let sendError = HSMSError.sendFailed(message: message, cause: error)
-//                                    self.putDebugLog(type: .errorSendHSMSMessageFailed, value: sendError)
-//                                    try transaction.sendResultQueue.put(Result.failure(sendError))
-                                } else {
-                                    self.putDebugLog(type: .didSendHSMSMessage, value: message)
-                                    try transaction.sendResultQueue.put(Result.success(message))
-                                }
-                                
-                                DispatchQueue.global().async {
-                                    connectionSending()
-                                }
-                            }
-                            catch {
-                                cancelConnection()
-                            }
-                        }))
-                    }
-                }
-                catch {
-                    cancelConnection()
-                }
-            }
-            
-            DispatchQueue.global().async {
-                connectionSending()
-            }
-            
-            // wait until NWConnection is .ready
-            do {
-                try connectionStateChangeNotifier.waitUntil(.ready)
-            }
-            catch {
-                cancelConnection();
-                return
-            }
-            
-            DispatchQueue.global().async {
-                do {
-                    try connectionStateChangeNotifier.waitUntilNot(.ready)
-                }
-                catch {
-                    /* Nothin */
+            // receive whole HSMS-Message.
+            Task {
+                let stream = self.receiveWholeHSMSMessageStream
+                for await pair in stream {
+                    self._onDidReceiveWholeHSMSMessage?(pair.message, pair.connection)
+                    Logger.receiveHSMSMessage.notice("\(String(describing: pair.message))")
                 }
                 
-                cancelConnection();
+                Logger.communicator.debug("receiveWholeHSMSMessageStream finished.")
             }
             
-            self.hsmsSession.set(connectionState: .notSelected, transaction: transaction)
+            await self.session.start()
             
-            // send SELECT.req and SELECT.rsp is success.
-            do {
-                guard let r = try self.hsmsSession.sendSelectRequest() else {
-                    cancelConnection()
-                    return
-                }
-
-                let selectStatus = HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: r)
-                switch selectStatus {
-                case .success:
-                    // success
-                    break
-                case .actived:
-                    // success
-                    break
-                default:
-                    cancelConnection()
-                    return;
-                }
-            }
-            catch {
-                cancelConnection()
-                return;
-            }
-            
-            self.hsmsSession.set(connectionState: .selected)
-            
-            // linktest
-            hsmsLinktest.start(linktest: {
+            let task = Task { [weak self] in
+                guard let self = self else { return }
                 do {
-                    guard let _ = try self.hsmsSession.sendLinktestRequest() else {
-                        cancelConnection()
-                        return
-                    }
-                }
-                catch {
-                    cancelConnection()
-                }
-            })
-            
-            // receiving HSMS-Message
-            do {
-                while !self.alreadyConnectionDidCancel {
-                    var message = try receiveHSMSMessageQueue.take()
-                    
-                    switch message.messageType {
-                    case .data:
-                        try self.hsmsSession.receiveHSMSMessageNotifier.put(message)
-                    case .selectRequest:
-                        try self.hsmsSession.replySelectResponse(primaryMessage: message, status: .actived)
-                    case .selectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                    case .deselectRequest:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
-                    case .deselectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                    case .linktestRequest:
-                        try self.hsmsSession.replyLinktestResponse(primaryMessage: &message)
-                    case .linktestResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                    case .rejectRequest:
-                        /* Nothing */
-                        break
-                    case .separateRequest:
-                        cancelConnection()
-                        return
-                    default:
-                        if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
-                        } else {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeP, byte2: message.header10Bytes[4])
+                    while !Task.isCancelled {
+                        switch self.config.connectionMode {
+                        case .active:
+                            Logger.communicator.notice("HSMS-SS Active perform start.")
+                            try await self.performActive(queue: queue)
+                            try Task.checkCancellation()
+                            
+                            Logger.communicator.notice("HSMS-SS Active sleep T5-Timeout: \(self.config.timeout.t5)")
+                            try await Task.sleep(for: self.config.timeout.t5)
+                            
+                        case .passive:
+                            Logger.communicator.notice("HSMS-SS Passive perform start.")
+                            try await self.performPassive(queue: queue)
+                            try Task.checkCancellation()
+                            
+                            Logger.communicator.notice("HSMS-SS Passive sleep rebind duration: \(self.config.rebindDuration)")
+                            try await Task.sleep(for: self.config.rebindDuration)
                         }
                     }
                 }
-            }
-            catch {
-                /* Nothing */
+                catch is CancellationError {
+                    // ignore
+                }
+                catch {
+                    Logger.communicator.error("\(error)")
+                }
             }
             
-            cancelConnection()
-        }
-        
-        if !alreadyConnectionDidCancel {
-            self.condition.wait()
+            // waiting until shutdown called.
+            for await _ in self.shutdownStream {
+            }
+            task.cancel()
+            
+            self.startAndShutdown.shutdown()
+            
+            self._onDidReceiveWholeHSMSMessage = nil
+            self.receiveWholeHSMSMessageContinuation.finish()
+            await self.transactor.shutdown()
+            await self.session.shutdown()
+            
+            Logger.communicator.debug("start-task finished.")
         }
     }
     
-
-    private func runPassiveTask() {
-        
+    public func shutdown() {
+        guard self.startAndShutdown.shutdown() == false else { return }
+        Logger.communicator.debug("shutdown called.")
+        self.shutdownContinuation.finish()
+    }
+    
+    /// Linktest, Returns true if linktest success, otherwise false.
+    ///
+    /// - Returns: true if linktest success, otherwise false.
+    public func linktest() async -> Bool {
         do {
-            var conditions: [NSCondition] = []
-            let nwListener = try NWListener(using: .tcp, on: self.config.port)
-            nwListener.newConnectionHandler = { connection in
-                DispatchQueue.global().async {
-                    let condition = NSCondition()
-                    conditions.append(condition)
-                    self.passiveConenction(connection: connection, condition: condition)
-                    connection.cancel()
-                    conditions.removeAll { $0 === condition }
+            if let response = try await self.sendLinktestRequest() {
+                if case .linktestResponse = response.messageType {
+                    return true
                 }
             }
-            nwListener.start(queue: DispatchQueue.global())
-            self.condition.wait()
-            nwListener.cancel()
-            for condition in conditions {
-                condition.lock()
-                condition.broadcast()
-                condition.unlock()
-            }
-            self.condition.unlock()
         }
         catch {
         }
+        
+        return false
     }
     
-    private func passiveConenction(connection: NWConnection, condition: NSCondition) {
-        
-        let connectionStateChangeNotifier = StateChangeNotifier<NWConnection.State>(.preparing)
-        let hsmsMessageReceiver = HSMSSSMessageReceiver(communicator: self)
-        let receiveHSMSMessageQueue = BlockingQueue<HSMSMessage>()
-        let hsmsLinktest = HSMSSSLinktest(communicator: self)
-        
-        @Sendable func cancelConnection() {
-            condition.lock()
-            if !alreadyConnectionDidCancel {
-                condition.broadcast()
-            }
-            condition.unlock()
+    // MARK: - HSMSConnectionStateDetectable
+    
+    public var onDidUpdateCommunicatable: ((Bool) -> Void)? {
+        get {
+            return self.session.onDidUpdateCommunicatable
         }
-        
-        condition.lock()
-        defer {
-            alreadyConnectionDidCancel = true
-            
-            connectionStateChangeNotifier.shutdown()
-            hsmsMessageReceiver.shutdown()
-            receiveHSMSMessageQueue.shutdown()
-            hsmsLinktest.shutdown()
-            
-            condition.unlock()
-        }
-        
-        DispatchQueue.global().async {
-            
-            let nwConnectionQueue = DispatchQueue.global()
-            let transaction = HSMSSSMessageTransaction(communicator: self)
-            
-            @Sendable func connectionReceiving() {
-                connection.receive(minimumIncompleteLength: 1, maximumLength: 1024) { data, context, isComplete, error in
-                    
-                    if let _ = error {
-                        cancelConnection()
-                        return
-                    }
-                    if let data = data {
-                        do {
-                            try hsmsMessageReceiver.put(data)
-                            connectionReceiving()
-                        }
-                        catch {
-                            cancelConnection()
-                        }
-                    } else {
-                        cancelConnection()
-                    }
-                }
-            }
-            
-            DispatchQueue.global().async {
-                do {
-                    while true {
-                        let message = try hsmsMessageReceiver.take()
-
-                        let putResult = try transaction.put(receiveMessage: message)
-                        switch putResult {
-                        case .existReplyMeessage:
-                            break
-                        case .primaryMessage:
-                            try receiveHSMSMessageQueue.put(message)
-                        }
-                        
-                        hsmsLinktest.reset()
-                    }
-                }
-                catch {
-                    /* Nothing */
-                }
-            }
-            
-            connection.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    connectionStateChangeNotifier.set(state)
-                    
-                    DispatchQueue.global().async {
-                        connectionReceiving()
-                    }
-                    
-                default:
-                    connectionStateChangeNotifier.set(state)
-                }
-            }
-            
-            // start connection
-            connection.start(queue: nwConnectionQueue)
-            
-            @Sendable func connectionSending() {
-                do {
-                    let message = try transaction.willSendQueue.take()
-                    nwConnectionQueue.async {
-                        connection.send(content: message.data, completion: .contentProcessed({ error in
-                            
-                            do {
-                                if let error = error {
-//                                    let sendError = HSMSError.sendFailed(message: message, cause: error)
-//                                    self.putDebugLog(type: .errorSendHSMSMessageFailed, value: sendError)
-//                                    try transaction.sendResultQueue.put(Result.failure(sendError))
-                                } else {
-                                    self.putDebugLog(type: .didSendHSMSMessage, value: message)
-                                    try transaction.sendResultQueue.put(Result.success(message))
-                                }
-                                
-                                DispatchQueue.global().async {
-                                    connectionSending()
-                                }
-                            }
-                            catch {
-                                cancelConnection()
-                            }
-                        }))
-                    }
-                }
-                catch {
-                    cancelConnection()
-                }
-            }
-            
-            DispatchQueue.global().async {
-                connectionSending()
-            }
-            
-            // wait until NWConnection is .ready
-            do {
-                try connectionStateChangeNotifier.waitUntil(.ready)
-            }
-            catch {
-                cancelConnection();
-                return
-            }
-            
-            DispatchQueue.global().async {
-                do {
-                    try connectionStateChangeNotifier.waitUntilNot(.ready)
-                }
-                catch {
-                    /* Nothin */
-                }
-                
-                cancelConnection();
-            }
-            
-            // wait SELECT.req
-            selectRequestLoop: do {
-                while !self.alreadyConnectionDidCancel {
-                    let message = try receiveHSMSMessageQueue.take()
-                    
-                    switch message.messageType {
-                    case .data:
-                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                        try transaction.send(message: msg)
-                    case .selectRequest:
-                        if self.hsmsSession.trySet(transaction: transaction) {
-                            self.hsmsSession.set(connectionState: .selected)
-                            try self.hsmsSession.replySelectResponse(primaryMessage: message, status: .success)
-                            break selectRequestLoop
-                        } else {
-                            try transaction.send(message: self.messageBuilder.buildSelectResponse(selectRequest: message, selectStatus: .alreadyUsed))
-                        }
-                    case .selectResponse:
-                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                        try transaction.send(message: msg)
-                    case .deselectRequest:
-                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .notSupportTypeS, byte2: message.header10Bytes[5])
-                        try transaction.send(message: msg)
-                    case .deselectResponse:
-                        let msg = self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                        try transaction.send(message: msg)
-                    case .linktestRequest:
-                        let msg = self.messageBuilder.buildLinktestResponse(linktestRequest: message)
-                        try transaction.send(message: msg)
-                    case .linktestResponse:
-                        try transaction.send(message: self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .transactionNotOpen, byte2: message.header10Bytes[5]))
-                    case .rejectRequest:
-                        /* Nothing */
-                        break
-                    case .separateRequest:
-                        cancelConnection()
-                        return
-                    default:
-                        if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {
-                            try transaction.send(message: self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .notSupportTypeS, byte2: message.header10Bytes[5]))
-                        } else {
-                            try transaction.send(message: self.messageBuilder.buildRejectRequest(referenceMessage: message, rejectReason: .notSupportTypeP, byte2: message.header10Bytes[4]))
-                        }
-                    }
-                }
-            }
-            catch {
-                cancelConnection()
-                return
-            }
-            
-            // linktest
-            hsmsLinktest.start(linktest: {
-                do {
-                    guard let _ = try self.hsmsSession.sendLinktestRequest() else {
-                        cancelConnection()
-                        return
-                    }
-                }
-                catch {
-                    cancelConnection()
-                }
-            })
-            
-            do {
-                defer {
-                    self.hsmsSession.set(connectionState: .notConnected, transaction: nil)
-                }
-                
-                while !self.alreadyConnectionDidCancel {
-                    var message = try receiveHSMSMessageQueue.take()
-                    
-                    switch message.messageType {
-                    case .data:
-                        try self.hsmsSession.receiveHSMSMessageNotifier.put(message)
-                    case .selectRequest:
-                        try self.hsmsSession.replySelectResponse(primaryMessage: message, status: .actived)
-                    case .selectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                    case .deselectRequest:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
-                    case .deselectResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                    case .linktestRequest:
-                        try self.hsmsSession.replyLinktestResponse(primaryMessage: &message)
-                    case .linktestResponse:
-                        try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .transactionNotOpen, byte2: message.header10Bytes[5])
-                    case .rejectRequest:
-                        /* Nothing */
-                        break
-                    case .separateRequest:
-                        cancelConnection()
-                        return
-                    default:
-                        if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeS, byte2: message.header10Bytes[5])
-                        } else {
-                            try self.hsmsSession.sendRejectRequest(primaryMessage: &message, reason: .notSupportTypeP, byte2: message.header10Bytes[4])
-                        }
-                    }
-                }
-            }
-            catch {
-                /* Nothing */
-            }
-            
-            cancelConnection()
-        }
-        
-        if !alreadyConnectionDidCancel {
-            condition.wait()
+        set {
+            self.session.onDidUpdateCommunicatable = newValue
         }
     }
+    
+    public var onDidUpdateHSMSConnectionState: ((HSMSSession.HSMSConnectionState) -> Void)? {
+        get {
+            return self.session.onDidUpdateHSMSConnectionState
+        }
+        set {
+            self.session.onDidUpdateHSMSConnectionState = newValue
+        }
+    }
+    
+    public func until(connectionState: HSMSSession.HSMSConnectionState) async throws {
+        try await self.session.until(connectionState: connectionState)
+    }
+    
+    public func untilNot(connectionState: HSMSSession.HSMSConnectionState) async throws {
+        try await self.session.untilNot(connectionState: connectionState)
+    }
+    
+    @discardableResult
+    public func until(connectionState: HSMSSession.HSMSConnectionState, timeout: Duration) async throws -> Bool {
+        return try await self.session.until(connectionState: connectionState, timeout: timeout)
+    }
+    
+    @discardableResult
+    public func untilNot(connectionState: HSMSSession.HSMSConnectionState, timeout: Duration) async throws -> Bool {
+        return try await self.session.untilNot(connectionState: connectionState, timeout: timeout)
+    }
+    
+    // MARK: - SECSMessageReceivable
+    
+    public var onDidReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? {
+        get {
+            return self.session.onDidReceivePrimaryDataSECSMessage
+        }
+        set {
+            self.session.onDidReceivePrimaryDataSECSMessage = newValue
+        }
+    }
+    
+    // MARK: - HSMSMessageReceivable
+    
+    public var onDidReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? {
+        get {
+            return self._onDidReceiveWholeHSMSMessage
+        }
+        set {
+            self._onDidReceiveWholeHSMSMessage = newValue
+        }
+    }
+    
+    // MARK: - HSMSMessageSendable
+    
+    public func send(message: HSMSMessage) async throws -> HSMSMessage? {
+        return try await self.session.send(message: message)
+    }
+    
+    public func reply(message: HSMSMessage) async throws {
+        try await self.session.reply(message: message)
+    }
+    
+    @discardableResult
+    public func send(smlMessage: SMLMessage) async throws -> (any SECSMessage)? {
+        return try await self.session.send(smlMessage: smlMessage)
+    }
+    
+    public func reply(primaryMessage: any SECSMessage, smlMessage: SMLMessage) async throws {
+        try await self.session.reply(primaryMessage: primaryMessage, smlMessage: smlMessage)
+    }
+    
+    public func sendSelectRequest() async throws -> HSMSMessage? {
+        return try await self.session.sendSelectRequest()
+    }
+    
+    public func replySelectResponse(selectRequest: HSMSMessage, selectStatus: HSMSMessage.SelectStatus) async throws {
+        try await self.session.replySelectResponse(selectRequest: selectRequest, selectStatus: selectStatus)
+    }
+    
+    public func sendDeselectRequest() async throws -> HSMSMessage? {
+        return try await self.session.sendDeselectRequest()
+    }
+    
+    public func replyDeselectResponse(deselectRequest: HSMSMessage, deselectStatus: HSMSMessage.DeselectStatus) async throws {
+        try await self.session.replyDeselectResponse(deselectRequest: deselectRequest, deselectStatus: deselectStatus)
+    }
+    
+    public func sendLinktestRequest() async throws -> HSMSMessage? {
+        return try await self.session.sendLinktestRequest()
+    }
+    
+    public func replyLinktestResponse(linktestRequest: HSMSMessage) async throws {
+        try await self.session.replyLinktestResponse(linktestRequest: linktestRequest)
+    }
+    
+    public func replyRejectRequest(referenceMessage: HSMSMessage, rejectReason: HSMSMessage.RejectReason, byte2: UInt8) async throws {
+        try await self.session.replyRejectRequest(referenceMessage: referenceMessage, rejectReason: rejectReason, byte2: byte2)
+    }
+    
+    public func sendSeparateRequest() async throws {
+        try await self.session.sendSeparateRequest()
+    }
+    
+    // MARK: - Active
+    
+    private func performActive(queue: DispatchQueue) async throws {
+        guard let activeIpAddress = self.config.ipAddress else {
+            fatalError("IP-Address not setted")
+        }
+        let connection = NWConnection(host: activeIpAddress, port: self.config.port, using: .tcp)
+        let pipeline = self.newPipeline(connection: connection)
+        
+        defer {
+            pipeline.shutdown()
+            if connection.state != .cancelled {
+                connection.cancel()
+            }
+        }
+        
+        do {
+            try await connection.connect(queue: queue)
+            
+            guard await self.session.connectionAndState.set(connection: connection, state: .notSelected) else {
+                Logger.communicator.fault("NWConnection already setted.")
+                fatalError("NWConnection already setted.")
+            }
+            
+            let linktestTimer = self.newLinktestTimer()
+            
+            await withTaskGroup(of: Void.self) { group in
+                // HSMS-Message pipeline
+                group.addTask { [weak self] in
+                    guard let self = self else { return }
+                    let stream = pipeline.hsmsMessageAndNWConnectionStream()
+                    for await result in stream {
+                        switch result {
+                        case .success(let pair):
+                            self.receiveWholeHSMSMessageContinuation.yield(pair)
+                            await self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
+                            await linktestTimer.reset()
+                        case .failure(let error):
+                            Logger.communicator.error("\(error)")
+                        }
+                    }
+                    
+                    Logger.communicator.debug("pipeline.hsmsMessageAndNWConnectionStream finished.")
+                }
+                
+                // receive dataStream
+                group.addTask {
+                    let dataStream = connection.dataStream()
+                    for await result in dataStream {
+                        switch result {
+                        case .success(let data):
+                            pipeline.yield(data: data)
+                        case .failure(let error):
+                            Logger.nwConnection.error("\(error)")
+                        }
+                    }
+                    
+                    Logger.communicator.debug("NWConnection.dataStream finished.")
+                }
+                
+                // session-state
+                group.addTask { [weak self] in
+                    guard let self = self else { return }
+                    do {
+                        // SELECT.req
+                        guard let selectResponse = try await self.session.sendSelectRequest() else { return }
+                        let selectStatus = HSMSMessage.SelectStatus(hsmsSelectRespnseMessage: selectResponse)
+                        switch selectStatus {
+                        case .success, .actived:
+                            // select success
+                            await self.session.connectionAndState.set(state: .selected)
+                        default:
+                            // select failed
+                            return
+                        }
+                        
+                        // Linktest
+                        linktestTimer.linktest = { [weak self] in
+                            guard let self = self else { return }
+                            Task {
+                                guard await self.linktest() else {
+                                    await self.session.connectionAndState.unset()
+                                    return
+                                }
+                            }
+                        }
+                        await linktestTimer.start()
+                        
+                        try await self.session.connectionAndState.hsmsConnectionStateUpdateNotifier.untilNot(.selected)
+                    }
+                    catch is CancellationError {
+                        // ignore
+                    }
+                    catch {
+                        Logger.communicator.error("\(error)")
+                    }
+                }
+                
+                await group.next()
+                group.cancelAll()
+                await linktestTimer.shutdown()
+                
+                await self.session.connectionAndState.unset()
+            }
+        }
+        catch let error as CancellationError {
+            throw error
+        }
+        catch {
+            Logger.nwConnection.error("\(error)")
+        }
+    }
+    
+    // MARK: - Passive
+    
+    private func performPassive(queue: DispatchQueue) async throws {
+        do {
+            let listener = try NWListenerStreamWrapper(using: .tcp, on: config.port)
+            defer {
+                listener.cancel()
+            }
+            
+            try listener.start(queue: queue)
+            
+            let stream = listener.connectionAndQueueStream()
+            for await result in stream {
+                switch result {
+                case .success(let pair):
+                    Task {
+                        do {
+                            try await self.performPassiveConnection(connection: pair.connection, queue: pair.queue)
+                        }
+                        catch {
+                            Logger.nwConnection.error("\(error)")
+                        }
+                    }
+                case .failure(let error):
+                    throw error
+                }
+            }
+        }
+        catch let error as CancellationError {
+            throw error
+        }
+        catch {
+            Logger.nwConnection.error("\(error)")
+        }
+    }
+    
+    private func performPassiveConnection(connection: NWConnection, queue: DispatchQueue) async throws {
+        let pipeline = self.newPipeline(connection: connection)
+        
+        defer {
+            pipeline.shutdown()
+            if connection.state != .cancelled {
+                connection.cancel()
+            }
+        }
+        
+        try await connection.connect(queue: queue)
+        
+        await withTaskGroup(of: Void.self) { group in
+            // receive dataStream
+            group.addTask {
+                let dataStream = connection.dataStream()
+                for await result in dataStream {
+                    switch result {
+                    case .success(let data):
+                        pipeline.yield(data: data)
+                    case .failure(let error):
+                        Logger.nwConnection.error("\(error)")
+                    }
+                }
+                
+                Logger.communicator.debug("NWConnection.dataStream finished.")
+            }
+            
+            // session-state
+            group.addTask { [weak self] in
+                guard let self = self else { return }
+                
+                let pipelineStream = pipeline.hsmsMessageAndNWConnectionStream()
+                
+                do {
+                    guard let firstRequestResult = try await pipelineStream.poll(timeout: self.config.timeout.t7) else {
+                        Logger.communicator.error("HSMS-SS-Passive Timeout-T7")
+                        return
+                    }
+                    
+                    switch firstRequestResult {
+                    case .success(let pair):
+                        self.receiveWholeHSMSMessageContinuation.yield(pair)
+                        
+                        switch pair.message.messageType {
+                        case .selectRequest:
+                            // accept type
+                            break
+                            
+                        case .selectResponse, .deselectResponse, .linktestResponse:
+                            // reject not-open-transaction
+                            let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .transactionNotOpen, byte2: pair.message.header10Bytes[5])
+                            try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                            return
+                            
+                        case .rejectRequest, .separateRequest:
+                            // ignore type
+                            return
+                            
+                        default:
+                            // reject not-support-type
+                            if HSMSMessage.MessageType.hasPType(hsmsMessage: pair.message) {
+                                let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeS, byte2: pair.message.header10Bytes[5])
+                                try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                            } else {
+                                let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeP, byte2: pair.message.header10Bytes[4])
+                                try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                            }
+                            return
+                        }
+                        
+                        guard await self.session.connectionAndState.set(connection: pair.connection, state: .notSelected, .selected) else {
+                            Logger.communicator.info("NWConnection already setted.")
+                            
+                            let responseMessage = self.messageBuilder.buildSelectResponse(selectRequest: pair.message, selectStatus: .alreadyUsed)
+                            try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                            return
+                        }
+                        
+                        // success selected.
+                        do {
+                            try await self.session.replySelectResponse(selectRequest: pair.message, selectStatus: .success)
+                        }
+                        catch {
+                            await self.session.connectionAndState.unset()
+                            throw error
+                        }
+                        
+                    case .failure(let error):
+                        Logger.communicator.error("\(error)")
+                        return
+                    }
+                }
+                catch is CancellationError {
+                    // ignore
+                    return
+                }
+                catch {
+                    Logger.communicator.error("\(error)")
+                    return
+                }
+                
+                let linktestTimer = self.newLinktestTimer()
+                
+                await withTaskGroup(of: Void.self) { innerGroup in
+                    // HSMS-Message pipeline
+                    innerGroup.addTask {
+                        for await result in pipelineStream {
+                            switch result {
+                            case .success(let pair):
+                                self.receiveWholeHSMSMessageContinuation.yield(pair)
+                                await self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
+                                await linktestTimer.reset()
+                            case .failure(let error):
+                                Logger.communicator.error("\(error)")
+                            }
+                        }
+                        
+                        Logger.communicator.debug("pipeline.hsmsMessageAndNWConnectionStream finished.")
+                    }
+                    
+                    // inner-session-state
+                    innerGroup.addTask {
+                        do {
+                            // Linktest
+                            linktestTimer.linktest = { [weak self] in
+                                guard let self = self else { return }
+                                Task {
+                                    guard await self.linktest() else {
+                                        await self.session.connectionAndState.unset()
+                                        return
+                                    }
+                                }
+                            }
+                            await linktestTimer.start()
+                            
+                            try await self.session.connectionAndState.hsmsConnectionStateUpdateNotifier.until(.notConnected)
+                        }
+                        catch is CancellationError {
+                            // ignore
+                        }
+                        catch {
+                            Logger.communicator.error("\(error)")
+                        }
+                    }
+                    
+                    await innerGroup.next()
+                    innerGroup.cancelAll()
+                    await linktestTimer.shutdown()
+                    
+                    await self.session.connectionAndState.unset()
+                }
+            }
+            
+            await group.next()
+            group.cancelAll()
+        }
+    }
+    
+    // MARK: -
+    
+    private func newPipeline(connection: NWConnection) -> HSMSMessagePipeline {
+        let instance = HSMSMessagePipeline(connection: connection)
+        instance.timeoutT8 = { [weak self] in
+            guard let self = self else {
+                return .seconds(6.0)
+            }
+            return self.config.timeout.t8
+        }
+        return instance
+    }
+    
+    private func newLinktestTimer() -> HSMSLinktestTimer {
+        let instance = HSMSLinktestTimer()
+        instance.autoLinktest = { [weak self] in
+            guard let self = self else {
+                return false
+            }
+            return self.config.autoLinktest
+        }
+        instance.linktestDuration = { [weak self] in
+            guard let self = self else {
+                return .seconds(120.0)
+            }
+            return self.config.linktestDuration
+        }
+        return instance
+    }
+
 }

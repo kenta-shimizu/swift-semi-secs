@@ -22,12 +22,12 @@ public protocol SECSMessageSendable {
 public extension SECSMessageSendable {
     
     @discardableResult
-    func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) async throws -> SECSMessage? {
+    func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)? = nil) async throws -> SECSMessage? {
         let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
         return try await self.send(smlMessage: smlMessage)
     }
     
-    func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) async throws {
+    func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)? = nil) async throws {
         let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
         try await self.reply(primaryMessage: primaryMessage, smlMessage: smlMessage)
     }

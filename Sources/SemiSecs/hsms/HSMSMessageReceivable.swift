@@ -5,9 +5,11 @@
 //  Created by kenta-shimizu on 2026/04/18.
 //
 
+import Network
+
 /// Receivable HSMSMessage.
-public protocol HSMSMessageReceivable: SECSPrimaryDataMessageReceivable {
+public protocol HSMSMessageReceivable {
     
     /// Whole HSMSMessage receive.
-    var onDidReceiveWholeHSMSMessage: ((HSMSMessage) -> ())? { get set }
+    var onDidReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? { get set }
 }
