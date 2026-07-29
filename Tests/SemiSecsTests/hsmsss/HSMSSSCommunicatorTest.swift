@@ -6,12 +6,13 @@
 //
 
 import Testing
+import Foundation
 import Network
 import SemiSecs
 
 struct HSMSSSCommunicatorTest {
     
-    private let testPort: NWEndpoint.Port = 6001
+    private let testPort: NWEndpoint.Port = 5020
     
     private func activeCommunicator() -> HSMSSSCommunicator {
         let communicator = HSMSSSCommunicator()
@@ -43,7 +44,7 @@ struct HSMSSSCommunicatorTest {
         communicator.config.autoLinktest = false
         communicator.config.rebindDuration = .seconds(10.0)
         
-        communicator.onDidReceivePrimaryDataSECSMessage = { message in
+        communicator.didReceivePrimaryDataSECSMessage = { message in
             Task {
                 do {
                     switch message.stream {
@@ -78,6 +79,8 @@ struct HSMSSSCommunicatorTest {
         let active = self.activeCommunicator()
         
         active.config.linktestDuration = .seconds(3.0)
+        active.config.timeout.t3 = .seconds(2.0)
+        active.config.timeout.t6 = .seconds(2.0)
         
         defer {
             active.shutdown()
@@ -88,12 +91,53 @@ struct HSMSSSCommunicatorTest {
         try await Task.sleep(for: .seconds(0.5))
         try active.start()
         
-        guard try await active.untilCommunicatable(timeout: .seconds(3.0)) else {
+//        let builder = SECS2BodyBuilder.shared
+//        let secs2body =
+//        builder.build(list: [
+//            builder.build(binary: Data([0x81])),
+//            builder.build(uint2:  [1001]),
+//            builder.build(ascii:  "ON FIRE")
+//        ])
+//        
+//        let response = try await passive.send(
+//            stream: 5,
+//            function: 1,
+//            wbit: true,
+//            secs2Body: secs2body)
+//        
+//        active.didReceivePrimaryDataSECSMessage = { primaryMessage in
+//            let stream = primaryMessage.stream
+//            let function = primaryMessage.function
+//            let wbit = primaryMessage.wbit
+//            
+//            if let secs2Body = primaryMessage.secs2Body {
+//                let alid: UInt8?  = secs2Body.uint8Value(at: 0, 0)
+//                let alcd: UInt16? = secs2Body.uint16Value(at: 1, 0)
+//                let altx: String? = secs2Body.stringValue(at: 2)
+//            }
+//            
+//            try await active.reply(
+//                primaryMessage: primaryMessage,
+//                stream: 5,
+//                function: 2,
+//                wbit: false,
+//                secs2Body: SECS2BodyBuilder.shared.build(binary: Data([0x00]))
+//            )
+//        }
+//
+//        if let response = response {
+//            let stream   = response.stream
+//            let function = response.function
+//            let wbit     = response.wbit
+//            if let secs2body = response.secs2Body {
+//                ...
+//            }
+//        }
+        
+        guard try await active.untilCommunicating(timeout: .seconds(5.0)) else {
             Issue.record("communicatable timeout")
             return
         }
-        
-        try await Task.sleep(for: .seconds(0.5))
         
         if let s1f2 = try await active.send(stream: 1, function: 1, wbit: true) {
             #expect(s1f2.stream == 1)

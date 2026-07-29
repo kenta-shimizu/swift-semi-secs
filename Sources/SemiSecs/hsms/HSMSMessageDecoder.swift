@@ -7,8 +7,15 @@
 
 import Foundation
 
+/// HSMS Message decordable
 public protocol HSMSMessageDecodable {
     
+    /// Decode Data to HSMSMessage.
+    ///
+    /// - Parameters:
+    ///   - header10Bytes: Header 10 bytes Data
+    ///   - secs2BodyData: SECS-II Body Data
+    /// - Returns: HSMSMessage
     func decode(header10Bytes: Data, secs2BodyData: Data) -> HSMSMessage
 }
 

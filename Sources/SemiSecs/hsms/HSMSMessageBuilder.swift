@@ -7,98 +7,112 @@
 
 import Foundation
 
+/// HSMS Message buildable
 public protocol HSMSMessageBuildable {
     
     /// Build HSMSMessage
     ///
-    /// Parameter header10Bytes: the Header10Bytes
-    /// Parameter secs2Body: the SECS2Body
-    /// Returns: HSMSMessage
+    /// - Parameters:
+    ///   - header10Bytes: the Header10Bytes
+    ///   - secs2Body: the SECS2Body
+    /// - Returns: HSMSMessage
     func build(header10Bytes: Data, secs2Body: (any SECS2Body)?) -> HSMSMessage
     
     /// Build primary-Data-HSMSMessage.
     ///
-    /// - Parameter sessionId: the Session-ID
-    /// - Parameter stream: the stream number
-    /// - Parameter function: the function number
-    /// - Parameter wbit: the wbit
-    /// - Parameter secs2Body: SECS-II-Body
+    /// - Parameters:
+    ///   - sessionId: the Session-ID
+    ///   - stream: the stream number
+    ///   - function: the function number
+    ///   - wbit: the wbit
+    ///   - secs2Body: SECS-II-Body
     /// - Returns: Primary HSMSMessage
     func buildPrimaryData(sessionId: UInt16, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) -> HSMSMessage
     
     /// Build primary-Data-HSMSMessage.
     ///
-    /// - Parameter sessionId: the the Session-ID
-    /// - Parameter smlMessage: the SMLMessage
+    /// - Parameters:
+    ///   - sessionId: the the Session-ID
+    ///   - smlMessage: the SMLMessage
     /// - Returns: Primary HSMSMessage
     func buildPrimaryData(sessionId: UInt16, smlMessage: SMLMessage) -> HSMSMessage
     
     /// Build response--HSMSMessage.
     ///
-    /// - Parameter primaryMessage: the  primary-SECSMessage
-    /// - Parameter stream: the stream number
-    /// - Parameter function: the function number
-    /// - Parameter wbit: the wbit
-    /// - Parameter secs2Body: SECS-II-Body
+    /// - Parameters:
+    ///   - primaryMessage: the  primary-SECSMessage
+    ///   - stream: the stream number
+    ///   - function: the function number
+    ///   - wbit: the wbit
+    ///   - secs2Body: SECS-II-Body
     /// - Returns: Response HSMSMessage
     func buildResponseData(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) -> HSMSMessage
     
     /// Build response-message.
     ///
-    /// - Parameter primaryMessage: the  primary-SECSMessage
-    /// - Parameter smlMessage: the SMLMessage
+    /// - Parameters:
+    ///   - primaryMessage: the  primary-SECSMessage
+    ///   - smlMessage: the SMLMessage
     /// - Returns: Response HSMSMessage
     func buildResponseData(primaryMessage: SECSMessage, smlMessage: SMLMessage) -> HSMSMessage
     
     /// Build SELECT.REQ
     ///
-    /// - Parameter sessionId: the Session-ID
+    /// - Parameters:
+    ///   - sessionId: the Session-ID
     /// - Returns: SELECT.REQ
     func buildSelectRequest(sessionId: UInt16) -> HSMSMessage
     
     /// Build SELECT.RSP
     ///
-    /// - Parameter selectRequest: SELECT.REQ
-    /// - Parameter selectStatus: the SELECT Status
+    /// - Parameters:
+    ///   - selectRequest: SELECT.REQ
+    ///   - selectStatus: the SELECT Status
     /// - Returns: SELECT.RSP
     func buildSelectResponse(selectRequest: HSMSMessage, selectStatus: HSMSMessage.SelectStatus) -> HSMSMessage
     
     /// Build DESELECT.REQ
     ///
-    /// - Parameter sessionId: the Session-ID
+    /// - Parameters:
+    ///   - sessionId: the Session-ID
     /// - Returns: DESELECT.REQ
     func buildDeselectRequest(sessionId: UInt16) -> HSMSMessage
     
     /// Build DESELECT.RSP
     ///
-    /// - Parameter deselectRequest: DESELECT.REQ
-    /// - Parameter deselectStatus: the DESELECT Status
+    /// - Parameters:
+    ///   - deselectRequest: DESELECT.REQ
+    ///   - deselectStatus: the DESELECT Status
     /// - Returns: DESELECT.RSP
     func buildDeselectResponse(deselectRequest: HSMSMessage, deselectStatus: HSMSMessage.DeselectStatus) -> HSMSMessage
     
     /// Build LINKTEST.REQ
     ///
-    /// - Parameter sessionId: the Session-ID
+    /// - Parameters:
+    ///   - sessionId: the Session-ID
     /// - Returns: LINKTEST.REQ
     func buildLinktestRequest(sessionId: UInt16) -> HSMSMessage
     
     /// Build LINKTEST.RSP
     ///
-    /// - Parameter linktestRequest: LINKTEST.REQ
+    /// - Parameters:
+    ///   - linktestRequest: LINKTEST.REQ
     /// - Returns: LINKTEST.RSP
     func buildLinktestResponse(linktestRequest: HSMSMessage) -> HSMSMessage
     
     /// Build REJECT.REQ
     ///
-    /// - Parameter referenceMessage: the reference message
-    /// - Parameter rejectReason: the REJECT reason
-    /// - Parameter byte2: headere[2] Number of P or S type
+    /// - Parameters:
+    ///   - referenceMessage: the reference message
+    ///   - rejectReason: the REJECT reason
+    ///   - byte2: headere[2] Number of P or S type
     /// - Returns: REJECT.REQ
     func buildRejectRequest(referenceMessage: HSMSMessage, rejectReason: HSMSMessage.RejectReason, byte2: UInt8) -> HSMSMessage
     
     /// Build SEPARATE.REQ
     ///
-    /// - Parameter sessionId: the Session-ID
+    /// - Parameters:
+    ///   - sessionId: the Session-ID
     /// - Returns: SEPARATE.REQ
     func buildSeparateRequest(sessionId: UInt16) -> HSMSMessage
     

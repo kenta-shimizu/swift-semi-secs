@@ -9,8 +9,10 @@ import Foundation
 import os
 import Network
 
+/// HSMS Session
 public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSMSConnectionStateDetectable, Sendable {
     
+    /// HSMS connection state
     public enum HSMSConnectionState: String, Sendable {
         case notConnected = "NOT_CONNECTED"
         case notSelected = "NOT_SELECTED"
@@ -76,11 +78,11 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     internal nonisolated(unsafe) var hsmsMessageBuilder: (() -> HSMSMessageBuildable)?
     internal nonisolated(unsafe) var hsmsMessageTransactor: (() -> HSMSMessageTransactor)?
     
-    private nonisolated(unsafe) var _onDidUpdateHSMSConnectionState: ((HSMSConnectionState) -> Void)?
+    private nonisolated(unsafe) var _didUpdateHSMSConnectionState: ((HSMSConnectionState) -> Void)?
     
-    private nonisolated(unsafe) var _onDidUpdateCommunicatable: ((Bool) -> Void)?
+    private nonisolated(unsafe) var _didUpdateCommunicationState: ((Bool) -> Void)?
     
-    private nonisolated(unsafe) var _onDidReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)?
+    private nonisolated(unsafe) var _didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)?
     
     // MARK: -
     
@@ -89,9 +91,9 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
         self.hsmsMessageTransactor = nil
         self.hsmsSessionId = nil
         
-        self._onDidUpdateHSMSConnectionState = nil
-        self._onDidUpdateCommunicatable = nil
-        self._onDidReceivePrimaryDataSECSMessage = nil
+        self._didUpdateHSMSConnectionState = nil
+        self._didUpdateCommunicationState = nil
+        self._didReceivePrimaryDataSECSMessage = nil
     }
     
     internal func start() async {
@@ -100,7 +102,7 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
             guard let self = self else { return }
             let stream = self.connectionAndState.hsmsConnectionStateUpdateNotifier.stateUpdateStream()
             for await state in stream {
-                self._onDidUpdateHSMSConnectionState?(state)
+                self._didUpdateHSMSConnectionState?(state)
                 await self.communicatableNotifier.yield(state == .selected)
             }
         }
@@ -109,14 +111,14 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
             guard let self = self else { return  }
             let stream = self.communicatableNotifier.stateUpdateStream()
             for await state in stream {
-                self._onDidUpdateCommunicatable?(state)
+                self._didUpdateCommunicationState?(state)
             }
         }
         // Receive SECS-Message observer
         Task { [weak self] in
             guard let self = self else { return }
             for await message in receiveHSMSMessageStream {
-                self._onDidReceivePrimaryDataSECSMessage?(message)
+                self._didReceivePrimaryDataSECSMessage?(message)
             }
         }
         
@@ -126,9 +128,9 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
         self.hsmsMessageBuilder = nil
         self.hsmsMessageTransactor = nil
         self.hsmsSessionId = nil
-        self._onDidUpdateHSMSConnectionState = nil
-        self._onDidUpdateCommunicatable = nil
-        self._onDidReceivePrimaryDataSECSMessage = nil
+        self._didUpdateHSMSConnectionState = nil
+        self._didUpdateCommunicationState = nil
+        self._didReceivePrimaryDataSECSMessage = nil
         
         await self.connectionAndState.shutdown()
         await self.communicatableNotifier.shutdown()
@@ -144,21 +146,21 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     
     // MARK: - HSMSConnectionStateDetectable
     
-    public var onDidUpdateCommunicatable: ((Bool) -> Void)? {
+    public var didUpdateCommunicationState: ((Bool) -> Void)? {
         get {
-            return self._onDidUpdateCommunicatable
+            return self._didUpdateCommunicationState
         }
         set {
-            self._onDidUpdateCommunicatable = newValue
+            self._didUpdateCommunicationState = newValue
         }
     }
     
-    public var onDidUpdateHSMSConnectionState: ((HSMSConnectionState) -> Void)? {
+    public var didUpdateHSMSConnectionState: ((HSMSConnectionState) -> Void)? {
         get {
-            return self._onDidUpdateHSMSConnectionState
+            return self._didUpdateHSMSConnectionState
         }
         set {
-            self._onDidUpdateHSMSConnectionState = newValue
+            self._didUpdateHSMSConnectionState = newValue
         }
     }
     
@@ -186,114 +188,171 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     
     // MARK: - SECSMessageReceivable
 
-    public var onDidReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? {
+    public var didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? {
         get {
-            return self._onDidReceivePrimaryDataSECSMessage
+            return self._didReceivePrimaryDataSECSMessage
         }
         set {
-            self._onDidReceivePrimaryDataSECSMessage = newValue
+            self._didReceivePrimaryDataSECSMessage = newValue
         }
     }
     
     // MARK: - HSMSMessageSendable
     
-    @discardableResult
-    public func send(message: HSMSMessage) async throws -> HSMSMessage? {
-        guard let connection = await self.connectionAndState.connection else {
-            throw HSMSSendError.sendFailedByNotConnected(message: message)
+    private func messageBuilderOrThrowing() throws -> HSMSMessageBuildable {
+        guard let builder = self.hsmsMessageBuilder?() else {
+            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
         }
-        return try await self.hsmsMessageTransactor!().send(message: message, connection: connection)
+        return builder
     }
     
-    public func reply(message: HSMSMessage) async throws {
+    private func interSendAndAwaitResponse(message: HSMSMessage) async throws -> HSMSMessage? {
         guard let connection = await self.connectionAndState.connection else {
             throw HSMSSendError.sendFailedByNotConnected(message: message)
         }
-        try await self.hsmsMessageTransactor!().reply(message: message, connection: connection)
+        return try await self.hsmsMessageTransactor!().sendAndAwaitResponse(message: message, connection: connection)
+    }
+    
+    private func interSend(message: HSMSMessage) async throws {
+        guard let connection = await self.connectionAndState.connection else {
+            throw HSMSSendError.sendFailedByNotConnected(message: message)
+        }
+        try await self.hsmsMessageTransactor!().send(message: message, connection: connection)
+    }
+    
+    @discardableResult
+    public func send(message: HSMSMessage) async throws -> HSMSMessage? {
+        do {
+            return try await self.interSendAndAwaitResponse(message: message)
+        }
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     @discardableResult
     public func send(smlMessage: SMLMessage) async throws -> SECSMessage? {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildPrimaryData(sessionId: self.sessionId, smlMessage: smlMessage)
+            return try await self.interSendAndAwaitResponse(message: message)
         }
-        let message = builder.buildPrimaryData(sessionId: self.sessionId, smlMessage: smlMessage)
-        return try await self.send(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     public func reply(primaryMessage: SECSMessage, smlMessage: SMLMessage) async throws {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildResponseData(primaryMessage: primaryMessage, smlMessage: smlMessage)
+            try await self.interSend(message: message)
         }
-        let message = builder.buildResponseData(primaryMessage: primaryMessage, smlMessage: smlMessage)
-        try await self.reply(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     @discardableResult
     public func sendSelectRequest() async throws -> HSMSMessage? {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildSelectRequest(sessionId: self.sessionId)
+            return try await self.interSendAndAwaitResponse(message: message)
         }
-        let message = builder.buildSelectRequest(sessionId: self.sessionId)
-        return try await self.send(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     public func replySelectResponse(selectRequest: HSMSMessage, selectStatus: HSMSMessage.SelectStatus) async throws {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildSelectResponse(selectRequest: selectRequest, selectStatus: selectStatus)
+            try await self.interSend(message: message)
         }
-        let message = builder.buildSelectResponse(selectRequest: selectRequest, selectStatus: selectStatus)
-        try await self.reply(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     @discardableResult
     public func sendDeselectRequest() async throws -> HSMSMessage? {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildDeselectRequest(sessionId: self.sessionId)
+            return try await self.interSendAndAwaitResponse(message: message)
         }
-        let message = builder.buildDeselectRequest(sessionId: self.sessionId)
-        return try await self.send(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     public func replyDeselectResponse(deselectRequest: HSMSMessage, deselectStatus: HSMSMessage.DeselectStatus) async throws {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildDeselectResponse(deselectRequest: deselectRequest, deselectStatus: deselectStatus)
+            try await self.interSend(message: message)
         }
-        let message = builder.buildDeselectResponse(deselectRequest: deselectRequest, deselectStatus: deselectStatus)
-        try await self.reply(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     @discardableResult
     public func sendLinktestRequest() async throws -> HSMSMessage? {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildLinktestRequest(sessionId: self.sessionId)
+            return try await self.interSendAndAwaitResponse(message: message)
         }
-        let message = builder.buildLinktestRequest(sessionId: self.sessionId)
-        return try await self.send(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     public func replyLinktestResponse(linktestRequest: HSMSMessage) async throws {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildLinktestResponse(linktestRequest: linktestRequest)
+            try await self.interSend(message: message)
         }
-        let message = builder.buildLinktestResponse(linktestRequest: linktestRequest)
-        try await self.reply(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     public func replyRejectRequest(referenceMessage: HSMSMessage, rejectReason: HSMSMessage.RejectReason, byte2: UInt8) async throws {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildRejectRequest(referenceMessage: referenceMessage, rejectReason: rejectReason, byte2: byte2)
+            try await self.interSend(message: message)
         }
-        let message = builder.buildRejectRequest(referenceMessage: referenceMessage, rejectReason: rejectReason, byte2: byte2)
-        try await self.reply(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
     public func sendSeparateRequest() async throws {
-        guard let builder = self.hsmsMessageBuilder?() else {
-            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: nil, connection: nil)
+        do {
+            let builder = try self.messageBuilderOrThrowing()
+            let message = builder.buildSeparateRequest(sessionId: self.sessionId)
+            try await self.interSend(message: message)
         }
-        let message = builder.buildSeparateRequest(sessionId: self.sessionId)
-        try await self.reply(message: message)
+        catch {
+            Logger.communicator.error("\(error)")
+            throw error
+        }
     }
     
 }

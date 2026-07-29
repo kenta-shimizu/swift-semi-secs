@@ -9,6 +9,6 @@
 public protocol SECSMessageReceivable {
     
     /// Primary-Data-Message receive.
-    var onDidReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? { get set }
+    var didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? { get set }
     
 }

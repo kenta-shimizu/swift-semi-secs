@@ -11,5 +11,5 @@ import Network
 public protocol HSMSMessageReceivable {
     
     /// Whole HSMSMessage receive.
-    var onDidReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? { get set }
+    var didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? { get set }
 }

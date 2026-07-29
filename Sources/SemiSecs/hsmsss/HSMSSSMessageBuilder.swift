@@ -8,6 +8,7 @@
 import Foundation
 import Synchronization
 
+/// HSMS-SS Message Builder.
 public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
     
     public nonisolated(unsafe) var isEquipment: (() -> Bool)?

@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// HSMS Message
 public struct HSMSMessage: SECSMessage {
     
     /// HSMS-Message Type.

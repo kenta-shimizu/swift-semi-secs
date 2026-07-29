@@ -20,7 +20,25 @@ public enum HSMSSendError: SECSSendError, HSMSError {
     case sendFailedByNotConnected(message: HSMSMessage)
     
     public var description: String {
-        return String(describing: type(of: self))
+        let type = String(describing: type(of: self))
+        
+        switch self {
+        case .sendFailed(let message, let connection, let cause):
+            return "\(type).sendFailed, message: \(message.header10BytesString), connection: \(connection), cause: \(cause)"
+            
+        case .sendFailedByCommunicatorShutdowned(let message, let connection):
+            var r = "\(type).sendFailedByCommunicatorShutdowned"
+            if let message = message {
+                r.append(", message: \(message.header10BytesString)")
+            }
+            if let connection = connection {
+                r.append(", connection: \(connection)")
+            }
+            return r
+            
+        case .sendFailedByNotConnected(let message):
+            return "\(type).sendFailedByNotConnected, message: \(message.header10BytesString)"
+        }
     }
     
     public var debugDescription: String {
@@ -37,7 +55,21 @@ public enum HSMSWaitReplyError: SECSWaitReplyError, HSMSError {
     case rejectRequest(primaryMessage: HSMSMessage, rejectRequestMessage: HSMSMessage, connection: NWConnection)
     
     public var description: String {
-        return String(describing: type(of: self))
+        let type = String(describing: type(of: self))
+        
+        switch self {
+        case .waitReplyFailedByTransactionShutdown(let primaryMessage, let connection):
+            return "\(type).waitReplyFailedByTransactionShutdown, primaryMessage: \(primaryMessage.header10BytesString), connection: \(connection)"
+            
+        case .timeoutT3(let primaryMessage, let connection):
+            return "\(type).timeoutT3, primaryMessage: \(primaryMessage.header10BytesString), connection: \(connection)"
+            
+        case .timeoutT6(let primaryMessage, let connection):
+            return "\(type).timeoutT6, primaryMessage: \(primaryMessage.header10BytesString), connection: \(connection)"
+            
+        case .rejectRequest(let primaryMessage, let rejectRequestMessage, let connection):
+            return "\(type).rejectRequest, primaryMessage: \(primaryMessage.header10BytesString), rejectRequestMessage: \(rejectRequestMessage.header10BytesString), connection: \(connection)"
+        }
     }
     
     public var debugDescription: String {
@@ -46,13 +78,21 @@ public enum HSMSWaitReplyError: SECSWaitReplyError, HSMSError {
 }
 
 /// HSMSReceiveError.
-public enum HSMSReceiveError: SECSReceiveError, HSMSError, Error {
+public enum HSMSReceiveError: SECSReceiveError, HSMSError {
     
     case timeoutT8
     case illegalReceiveLengthByte
     
     public var description: String {
-        return String(describing: type(of: self))
+        let type = String(describing: type(of: self))
+        
+        switch self {
+        case .timeoutT8:
+            return "\(type).timeoutT8"
+            
+        case .illegalReceiveLengthByte:
+            return "\(type).illegalReceiveLengthByte"
+        }
     }
     
     public var debugDescription: String {

@@ -9,6 +9,7 @@ import Foundation
 import os
 import Network
 
+/// HSMS-SS-Communicator
 public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SECSMessageReceivable, HSMSConnectionStateDetectable, Sendable {
     
     /// HSMS-SS communicator config.
@@ -139,10 +140,11 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     // MARK: - var
     
-    private nonisolated(unsafe) var _onDidReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
+    private nonisolated(unsafe) var _didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
     
     public nonisolated(unsafe) var config = HSMSSSCommunicatorConfig()
     
+    /// Create HSMS-SS communicator instance.
     public init() {
         // messageBuilder
         self.messageBuilder.isEquipment = { [weak self] in
@@ -168,17 +170,29 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             return self!.transactor
         }
         
-        self._onDidReceiveWholeHSMSMessage = nil
+        self._didReceiveWholeHSMSMessage = nil
     }
     
     deinit {
         self.shutdown()
     }
     
+    /// Mark start, throws if already started or shutdowned.
+    ///
+    /// - Throws:
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdonwed.
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
     public func start() throws {
         try self.start(queue: DispatchQueue(label: "defaultDispatchQueueLabel"))
     }
     
+    /// Mark start, throws if already started or shutdowned.
+    ///
+    /// - Parameters:
+    ///   - queue: the DispatchQueue
+    /// - Throws:
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdonwed.
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
     public func start(queue: DispatchQueue) throws {
         try self.startAndShutdown.start()
         
@@ -227,7 +241,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             Task {
                 let stream = self.receiveWholeHSMSMessageStream
                 for await pair in stream {
-                    self._onDidReceiveWholeHSMSMessage?(pair.message, pair.connection)
+                    self._didReceiveWholeHSMSMessage?(pair.message, pair.connection)
                     Logger.receiveHSMSMessage.notice("\(String(describing: pair.message))")
                 }
                 
@@ -274,7 +288,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             
             self.startAndShutdown.shutdown()
             
-            self._onDidReceiveWholeHSMSMessage = nil
+            self._didReceiveWholeHSMSMessage = nil
             self.receiveWholeHSMSMessageContinuation.finish()
             await self.transactor.shutdown()
             await self.session.shutdown()
@@ -308,21 +322,21 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     // MARK: - HSMSConnectionStateDetectable
     
-    public var onDidUpdateCommunicatable: ((Bool) -> Void)? {
+    public var didUpdateCommunicationState: ((Bool) -> Void)? {
         get {
-            return self.session.onDidUpdateCommunicatable
+            return self.session.didUpdateCommunicationState
         }
         set {
-            self.session.onDidUpdateCommunicatable = newValue
+            self.session.didUpdateCommunicationState = newValue
         }
     }
     
-    public var onDidUpdateHSMSConnectionState: ((HSMSSession.HSMSConnectionState) -> Void)? {
+    public var didUpdateHSMSConnectionState: ((HSMSSession.HSMSConnectionState) -> Void)? {
         get {
-            return self.session.onDidUpdateHSMSConnectionState
+            return self.session.didUpdateHSMSConnectionState
         }
         set {
-            self.session.onDidUpdateHSMSConnectionState = newValue
+            self.session.didUpdateHSMSConnectionState = newValue
         }
     }
     
@@ -346,23 +360,23 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     // MARK: - SECSMessageReceivable
     
-    public var onDidReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? {
+    public var didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? {
         get {
-            return self.session.onDidReceivePrimaryDataSECSMessage
+            return self.session.didReceivePrimaryDataSECSMessage
         }
         set {
-            self.session.onDidReceivePrimaryDataSECSMessage = newValue
+            self.session.didReceivePrimaryDataSECSMessage = newValue
         }
     }
     
     // MARK: - HSMSMessageReceivable
     
-    public var onDidReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? {
+    public var didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? {
         get {
-            return self._onDidReceiveWholeHSMSMessage
+            return self._didReceiveWholeHSMSMessage
         }
         set {
-            self._onDidReceiveWholeHSMSMessage = newValue
+            self._didReceiveWholeHSMSMessage = newValue
         }
     }
     
@@ -370,10 +384,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     public func send(message: HSMSMessage) async throws -> HSMSMessage? {
         return try await self.session.send(message: message)
-    }
-    
-    public func reply(message: HSMSMessage) async throws {
-        try await self.session.reply(message: message)
     }
     
     @discardableResult
@@ -511,7 +521,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         // ignore
                     }
                     catch {
-                        Logger.communicator.error("\(error)")
+                        // ignore
                     }
                 }
                 
@@ -618,7 +628,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         case .selectResponse, .deselectResponse, .linktestResponse:
                             // reject not-open-transaction
                             let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .transactionNotOpen, byte2: pair.message.header10Bytes[5])
-                            try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                            try await self.transactor.send(message: responseMessage, connection: pair.connection)
                             return
                             
                         case .rejectRequest, .separateRequest:
@@ -629,10 +639,10 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             // reject not-support-type
                             if HSMSMessage.MessageType.hasPType(hsmsMessage: pair.message) {
                                 let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeS, byte2: pair.message.header10Bytes[5])
-                                try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                                try await self.transactor.send(message: responseMessage, connection: pair.connection)
                             } else {
                                 let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeP, byte2: pair.message.header10Bytes[4])
-                                try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                                try await self.transactor.send(message: responseMessage, connection: pair.connection)
                             }
                             return
                         }
@@ -641,7 +651,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             Logger.communicator.info("NWConnection already setted.")
                             
                             let responseMessage = self.messageBuilder.buildSelectResponse(selectRequest: pair.message, selectStatus: .alreadyUsed)
-                            try await self.transactor.reply(message: responseMessage, connection: pair.connection)
+                            try await self.transactor.send(message: responseMessage, connection: pair.connection)
                             return
                         }
                         

@@ -179,7 +179,15 @@ public enum SECSCommunicatorStartAndShutdownError: SECSCommunicatorError {
     case alreadyShutdowned
     
     public var description: String {
-        return String(describing: type(of: self))
+        let type = String(describing: type(of: self))
+        
+        switch self {
+        case .alreadyStarted:
+            return "\(type).alreadyStarted"
+            
+        case .alreadyShutdowned:
+            return "\(type).alreadyShutdowned"
+        }
     }
     
     public var debugDescription: String {
@@ -201,8 +209,9 @@ internal final class StartAndShutdown: Sendable {
     
     /// Mark start, throws if already started or shutdowned.
     ///
-    /// - Throws: SECSCommunicatorStartAndShutdownError.alreadyStarted if already started.
-    /// - Throws: SECSCommunicatorStartAndShutdownError.alreadyShutdowned if already shutdonwed.
+    /// - Throws:
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdonwed.
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
     internal func start() throws {
         try lockQueue.sync {
             guard self.shutdowned == false else {

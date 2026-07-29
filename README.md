@@ -55,14 +55,87 @@ passive.config.rebindDuration = .seconds(10.0)
 try passive.start()
 ```
 
-### shutdown
+### Shutdown
 
+Cancel communication. Release all resources. Cannot be restarted after shutdowned.
 
-## Send primary-maessage and receive response-message.
+```swift
+active.shutdown()
+```
 
-building...
+## Send primary-maessage and await response-message.
 
-## Receive primary-message and reply message.
+1. Create SECS-II-Body
+
+```swift
+let builder = SECS2BodyBuilder.shared
+
+let secs2Body =
+builder.build(list: [                       // <L
+    builder.build(binary: Data([0x81])),    //   <B  0x81 >
+    builder.build(uint2:  [1001]),          //   <U2 1001 >
+    builder.build(ascii:  "ON FIRE")        //   <A "ON FIRE" >
+])                                          // >
+```
+
+2. Send message
+
+```swift
+let response = try await passive.send(
+    stream: 5,              // Stream-Number
+    function: 1,            // Function-Number
+    wbit: true,             // W-Bit
+    secs2Body: secs2Body    // SECS-II-Body
+)
+```
+
+3. Await response message
+
+The response message is Optional.  
+It contains a value if W-Bit is true, and is nil if W-Bit is false.  
+If T3-Timeout, throw SECSWaitReplyError.  
+
+```swift
+if let response = response {
+    let stream   = response.stream
+    let function = response.function
+    let wbit     = response.wbit
+    if let secs2Body = response.secs2Body {
+        // something...
+    }
+}
+```
+
+## Receive primary-message and reply message
+
+1. Set handler
+
+```swift
+active.didReceivePrimaryDataSECSMessage = { primaryMessage in
+    let stream = primaryMessage.stream          // Stream-Number
+    let function = primaryMessage.function      // Function-Number
+    let wbit = primaryMessage.wbit              // W-Bit
+    let secs2Body = primaryMessage.secs2Body    // SECS-II-Body
+}
+```
+
+2. Parse SECS-II
+
+```swift
+/* example receive message */
+S5F1 W
+<L [3]
+    <B  [1] 0x81>           // ALCD (0, 0)
+    <U2 [1] 1001>           // ALID (1, 0)
+    <A  "ON FIRE">          // ALTX (2)
+>. 
+
+if let secs2Body = primaryMessage.secs2Body {
+    let alid: UInt8?  = secs2Body.uint8Value(at: 0, 0)
+    let alcd: UInt16? = secs2Body.uint16Value(at: 1, 0)
+    let altx: String? = secs2Body.stringValue(at: 2)
+}
+```
 
 ### Parse SECS-II
 
@@ -81,6 +154,24 @@ building...
 | func floatValue(at:)  -> Float?  |   |   |   |   |   |   |   |   |   |   |   | ✓ |   |
 | func doubleValue(at:) -> Double? |   |   |   |   |   |   |   |   |   |   |   |   | ✓ |
 | func anyValue(at:)    -> any?    | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+3. Reply message
+
+```swift
+try await active.reply(
+    primaryMessage: primaryMessage,
+    stream: 5,
+    function: 2,
+    wbit: false,
+    secs2Body: SECS2BodyBuilder.shared.build(binary: Data([0x00]))
+)
+```
+
+## state
+
+building...
+
+// Wait until the status updates to Communicating.
 
 ## SML
 

@@ -60,7 +60,7 @@ internal actor HSMSMessageTransactor {
         }
     }
     
-    internal func send(message: HSMSMessage, connection: NWConnection) async throws -> HSMSMessage? {
+    internal func sendAndAwaitResponse(message: HSMSMessage, connection: NWConnection) async throws -> HSMSMessage? {
         
         if let timeout = timeoutTx(message) {
             
@@ -69,7 +69,7 @@ internal actor HSMSMessageTransactor {
             self.didReceiveMap[pair] = continuation
             
             do {
-                try await self.reply(message: message, connection: connection)
+                try await self.send(message: message, connection: connection)
                 
                 do {
                     // wait until receive response message in timeout.
@@ -107,12 +107,12 @@ internal actor HSMSMessageTransactor {
             
         } else {
             
-            try await self.reply(message: message, connection: connection)
+            try await self.send(message: message, connection: connection)
             return nil
         }
     }
     
-    internal func reply(message: HSMSMessage, connection: NWConnection) async throws {
+    internal func send(message: HSMSMessage, connection: NWConnection) async throws {
         
         let pair = HSMSMessageAndNWConnection(message: message, connection: connection)
         

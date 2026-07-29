@@ -95,7 +95,7 @@ struct HSMSMessageTransactorTest {
             
             // data
             let dataRequest = builder.buildPrimaryData(sessionId: sessionId, stream: 1, function: 13, wbit: true)
-            let dataResponse = try await transactor.send(message: dataRequest, connection: connection)
+            let dataResponse = try await transactor.sendAndAwaitResponse(message: dataRequest, connection: connection)
             
             #expect(dataResponse?.messageType == .data)
             #expect(dataResponse?.stream == 1)
@@ -104,25 +104,25 @@ struct HSMSMessageTransactorTest {
             
             // no-reply-data
             let noReplyRequest = builder.buildPrimaryData(sessionId: sessionId, stream: 1, function: 13, wbit: false)
-            let noReplyResponse = try await transactor.send(message: noReplyRequest, connection: connection)
+            let noReplyResponse = try await transactor.sendAndAwaitResponse(message: noReplyRequest, connection: connection)
             
             #expect(noReplyResponse == nil)
             
             // select.req
             let selectRequest = builder.buildSelectRequest(sessionId: sessionId)
-            let selectResponse = try await transactor.send(message: selectRequest, connection: connection)
+            let selectResponse = try await transactor.sendAndAwaitResponse(message: selectRequest, connection: connection)
             
             #expect(selectResponse?.messageType == .selectResponse)
             
             // deselect.req
             let deselectRequest = builder.buildDeselectRequest(sessionId: sessionId)
-            let deselectResponse = try await transactor.send(message: deselectRequest, connection: connection)
+            let deselectResponse = try await transactor.sendAndAwaitResponse(message: deselectRequest, connection: connection)
             
             #expect(deselectResponse?.messageType == .deselectResponse)
             
             // linktest.req
             let linktestRequest = builder.buildLinktestRequest(sessionId: sessionId)
-            let linktestResponse = try await transactor.send(message: linktestRequest, connection: connection)
+            let linktestResponse = try await transactor.sendAndAwaitResponse(message: linktestRequest, connection: connection)
             
             #expect(linktestResponse?.messageType == .linktestResponse)
             
@@ -169,31 +169,31 @@ struct HSMSMessageTransactorTest {
             
             // data
             let dataRequest = equipBuilder.buildPrimaryData(sessionId: sessionId, stream: 5, function: 1, wbit: false)
-            try await transactor.reply(message: dataRequest, connection: connection)
+            try await transactor.send(message: dataRequest, connection: connection)
             
             // select.rsp
             let selectRequest = hostBuilder.buildSelectRequest(sessionId: sessionId)
             let selectResponse = equipBuilder.buildSelectResponse(selectRequest: selectRequest, selectStatus: .success)
-            try await transactor.reply(message: selectResponse, connection: connection)
+            try await transactor.send(message: selectResponse, connection: connection)
             
             // deselect.rsp
             let deselectRequest = hostBuilder.buildDeselectRequest(sessionId: sessionId)
             let deselectResponse = equipBuilder.buildDeselectResponse(deselectRequest: deselectRequest, deselectStatus: .success)
-            try await transactor.reply(message: deselectResponse, connection: connection)
+            try await transactor.send(message: deselectResponse, connection: connection)
             
             // linktest.rsp
             let linktestRequest = hostBuilder.buildLinktestRequest(sessionId: sessionId)
             let linktestResponse = equipBuilder.buildLinktestResponse(linktestRequest: linktestRequest)
-            try await transactor.reply(message: linktestResponse, connection: connection)
+            try await transactor.send(message: linktestResponse, connection: connection)
             
             // reject.req
             let failureRequest = hostBuilder.buildSelectRequest(sessionId: sessionId)
             let rejectRequest = equipBuilder.buildRejectRequest(referenceMessage: failureRequest, rejectReason: .notSelected, byte2: 1)
-            try await transactor.reply(message: rejectRequest, connection: connection)
+            try await transactor.send(message: rejectRequest, connection: connection)
             
             // separate.rsp
             let separateRequest = hostBuilder.buildSeparateRequest(sessionId: sessionId)
-            try await transactor.reply(message: separateRequest, connection: connection)
+            try await transactor.send(message: separateRequest, connection: connection)
             
             // finally
             await transactor.shutdown()
@@ -291,7 +291,7 @@ struct HSMSMessageTransactorTest {
             
             // data
             let dataRequest = builder.buildPrimaryData(sessionId: sessionId, stream: 1, function: 13, wbit: true)
-            let _ = try await transactor.send(message: dataRequest, connection: connection)
+            let _ = try await transactor.sendAndAwaitResponse(message: dataRequest, connection: connection)
             
             Issue.record("timeoutT3-failed")
             
@@ -340,7 +340,7 @@ struct HSMSMessageTransactorTest {
         do {
             // select.req
             let selectRequest = builder.buildSelectRequest(sessionId: sessionId)
-            let _ = try await transactor.send(message: selectRequest, connection: connection)
+            let _ = try await transactor.sendAndAwaitResponse(message: selectRequest, connection: connection)
             
             Issue.record("timeoutT6-failed")
         }
@@ -353,7 +353,7 @@ struct HSMSMessageTransactorTest {
         do {
             // deselect.req
             let deselectRequest = builder.buildDeselectRequest(sessionId: sessionId)
-            let _ = try await transactor.send(message: deselectRequest, connection: connection)
+            let _ = try await transactor.sendAndAwaitResponse(message: deselectRequest, connection: connection)
             
             Issue.record("timeoutT6-failed")
         }
@@ -366,7 +366,7 @@ struct HSMSMessageTransactorTest {
         do {
             // linktest.req
             let linktestRequest = builder.buildLinktestRequest(sessionId: sessionId)
-            let _ = try await transactor.send(message: linktestRequest, connection: connection)
+            let _ = try await transactor.sendAndAwaitResponse(message: linktestRequest, connection: connection)
             
             Issue.record("timeoutT6-failed")
         }
