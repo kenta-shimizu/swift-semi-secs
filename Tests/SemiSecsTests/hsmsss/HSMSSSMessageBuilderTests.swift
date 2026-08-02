@@ -7,7 +7,7 @@
 
 import Testing
 import Foundation
-import SemiSecs
+@testable import SemiSecs
 
 struct HSMSSSMessageBuilderTests {
     
