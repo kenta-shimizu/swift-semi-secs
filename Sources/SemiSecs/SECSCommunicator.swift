@@ -165,7 +165,7 @@ public protocol SECSCommunicator {
     
     /// start communicator
     ///
-    /// - Throws: if already started or shutdowned.
+    /// - Throws: if already started or shutdown.
     func start() throws
     
     /// shutdown communicator.
@@ -176,7 +176,7 @@ public protocol SECSCommunicator {
 public enum SECSCommunicatorStartAndShutdownError: SECSCommunicatorError {
     
     case alreadyStarted
-    case alreadyShutdowned
+    case alreadyShutdown
     
     public var description: String {
         let type = String(describing: type(of: self))
@@ -185,8 +185,8 @@ public enum SECSCommunicatorStartAndShutdownError: SECSCommunicatorError {
         case .alreadyStarted:
             return "\(type).alreadyStarted"
             
-        case .alreadyShutdowned:
-            return "\(type).alreadyShutdowned"
+        case .alreadyShutdown:
+            return "\(type).alreadyShutdown"
         }
     }
     
@@ -207,15 +207,15 @@ internal final class StartAndShutdown: Sendable {
         self.shutdowned = false
     }
     
-    /// Mark start, throws if already started or shutdowned.
+    /// Mark start, throws if already started or shutdown.
     ///
     /// - Throws:
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdonwed.
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdown.
     ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
     internal func start() throws {
         try lockQueue.sync {
             guard self.shutdowned == false else {
-                throw SECSCommunicatorStartAndShutdownError.alreadyShutdowned
+                throw SECSCommunicatorStartAndShutdownError.alreadyShutdown
             }
             guard self.started == false else {
                 throw SECSCommunicatorStartAndShutdownError.alreadyStarted
@@ -224,9 +224,9 @@ internal final class StartAndShutdown: Sendable {
         }
     }
     
-    /// Mark shutdonwed, returns true if already shutdowned, otherwise false.
+    /// Mark shutdown, returns true if already shutdown, otherwise false.
     ///
-    /// - Returns: true if already shutdowned, otherwise false.
+    /// - Returns: true if already shutdown, otherwise false.
     @discardableResult
     internal func shutdown() -> Bool {
         lockQueue.sync {

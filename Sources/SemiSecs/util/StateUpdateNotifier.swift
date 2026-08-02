@@ -19,20 +19,20 @@ fileprivate struct ContinuationWrapper<T: Equatable & Sendable> {
 
 internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     
-    private var shutdonwned: Bool
+    private var shutdowned: Bool
     private let (stream, continuation) = AsyncStream.makeStream(of: T.self)
     internal var lastState: T
     private var continuationWrappers: [ContinuationWrapper<T>]
     
     internal init(state: T) {
-        self.shutdonwned = false
+        self.shutdowned = false
         self.lastState = state
         self.continuation.yield(state)
         self.continuationWrappers = []
     }
     
     internal func shutdown() async {
-        self.shutdonwned = true
+        self.shutdowned = true
         self.continuation.finish()
         for wrapper in self.continuationWrappers {
             wrapper.continuation.finish()
@@ -40,7 +40,7 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     }
     
     internal func yield(_ state: T) async {
-        guard self.shutdonwned == false else { return }
+        guard self.shutdowned == false else { return }
         if state != self.lastState {
             self.lastState = state
             self.continuation.yield(state)
@@ -73,7 +73,7 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     }
     
     private func until(predicate: (T) -> Bool) async throws {
-        guard self.shutdonwned == false else {
+        guard self.shutdowned == false else {
             throw CancellationError()
         }
         if predicate(self.lastState) { return }

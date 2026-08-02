@@ -4,7 +4,7 @@ SEMI-SECS for Swift6 Package
 
 ## Introduction
 
-This package is SEMI-SECS-communicate implementation on Swift6.
+This package is SEMI-SECS communication implementation on Swift6.
 
 ## Supports
 
@@ -14,7 +14,16 @@ This package is SEMI-SECS-communicate implementation on Swift6.
 
 ## Setup
 
-building...
+### Xcode
+
+1. **File** > **Add Package Dependencies...**
+2. Paste: `https://github.com/kenta-shimizu/swift-semi-secs`
+
+### Usage
+
+```swift
+import SemiSecs
+```
 
 ## Create Communicator instance and start
 
@@ -22,16 +31,16 @@ building...
 
 ```swift
 let active = HSMSSSCommunicator()
-active.config.connectionMode = .active
-active.config.ipAddress = "127.0.0.1"
-active.config.port = 5000
-active.config.isEquipment = false
-active.config.sessionId = 10
-active.config.timeout.t3 = .seconds(45.0)
-active.config.timeout.t5 = .seconds(10.0)
-active.config.timeout.t6 = .seconds( 5.0)
-active.config.timeout.t8 = .seconds( 6.0)
-active.config.autoLinktest = true
+active.config.connectionMode   = .active
+active.config.ipAddress        = "127.0.0.1"
+active.config.port             = 5000
+active.config.isEquipment      = false
+active.config.sessionId        = 10
+active.config.timeout.t3       = .seconds(45.0)
+active.config.timeout.t5       = .seconds(10.0)
+active.config.timeout.t6       = .seconds( 5.0)
+active.config.timeout.t8       = .seconds( 6.0)
+active.config.autoLinktest     = true
 active.config.linktestDuration = .seconds(120.0)
 
 try active.start()
@@ -42,14 +51,14 @@ try active.start()
 ```swift
 let passive = HSMSSSCommunicator()
 passive.config.connectionMode = .passive
-passive.config.port = 5000
-passive.config.isEquipment = true
-passive.config.sessionId = 10
-passive.config.timeout.t3 = .seconds(45.0)
-passive.config.timeout.t6 = .seconds( 5.0)
-passive.config.timeout.t7 = .seconds(10.0)
-passive.config.timeout.t8 = .seconds( 6.0)
-passive.config.autoLinktest = false
+passive.config.port           = 5000
+passive.config.isEquipment    = true
+passive.config.sessionId      = 10
+passive.config.timeout.t3     = .seconds(45.0)
+passive.config.timeout.t6     = .seconds( 5.0)
+passive.config.timeout.t7     = .seconds(10.0)
+passive.config.timeout.t8     = .seconds( 6.0)
+passive.config.autoLinktest   = false
 passive.config.rebindDuration = .seconds(10.0)
 
 try passive.start()
@@ -57,13 +66,13 @@ try passive.start()
 
 ### Shutdown
 
-Cancel communication. Release all resources. Cannot be restarted after shutdowned.
+Cancel communication. Release all resources. Cannot be restarted after shutdown.
 
 ```swift
 active.shutdown()
 ```
 
-## Send primary-maessage and await response-message.
+## Send primary-message and await response-message.
 
 1. Create SECS-II-Body
 
@@ -72,9 +81,9 @@ let builder = SECS2BodyBuilder.shared
 
 let secs2Body =
 builder.build(list: [                       // <L
-    builder.build(binary: Data([0x81])),    //   <B  0x81 >
-    builder.build(uint2:  [1001]),          //   <U2 1001 >
-    builder.build(ascii:  "ON FIRE")        //   <A "ON FIRE" >
+    builder.build(binary: Data([0x81])),    //     <B  0x81 >
+    builder.build(uint4:  [1001]),          //     <U4 1001 >
+    builder.build(ascii:  "ON FIRE")        //     <A "ON FIRE" >
 ])                                          // >
 ```
 
@@ -82,9 +91,9 @@ builder.build(list: [                       // <L
 
 ```swift
 let response = try await passive.send(
-    stream: 5,              // Stream-Number
-    function: 1,            // Function-Number
-    wbit: true,             // W-Bit
+    stream:    5,           // Stream-Number
+    function:  1,           // Function-Number
+    wbit:      true,        // W-Bit
     secs2Body: secs2Body    // SECS-II-Body
 )
 ```
@@ -112,9 +121,9 @@ if let response = response {
 
 ```swift
 active.didReceivePrimaryDataSECSMessage = { primaryMessage in
-    let stream = primaryMessage.stream          // Stream-Number
-    let function = primaryMessage.function      // Function-Number
-    let wbit = primaryMessage.wbit              // W-Bit
+    let stream    = primaryMessage.stream       // Stream-Number
+    let function  = primaryMessage.function     // Function-Number
+    let wbit      = primaryMessage.wbit         // W-Bit
     let secs2Body = primaryMessage.secs2Body    // SECS-II-Body
 }
 ```
@@ -125,14 +134,14 @@ active.didReceivePrimaryDataSECSMessage = { primaryMessage in
 /* example receive message */
 S5F1 W
 <L [3]
-    <B  [1] 0x81>           // ALCD (0, 0)
-    <U2 [1] 1001>           // ALID (1, 0)
-    <A  "ON FIRE">          // ALTX (2)
+    <B  [1] 0x81>       // ALCD (0, 0)
+    <U4 [1] 1001>       // ALID (1, 0)
+    <A  "ON FIRE">      // ALTX (2)
 >. 
 
 if let secs2Body = primaryMessage.secs2Body {
-    let alid: UInt8?  = secs2Body.uint8Value(at: 0, 0)
-    let alcd: UInt16? = secs2Body.uint16Value(at: 1, 0)
+    let alcd: UInt8?  = secs2Body.uint8Value(at: 0, 0)
+    let alid: UInt32? = secs2Body.uint32Value(at: 1, 0)
     let altx: String? = secs2Body.stringValue(at: 2)
 }
 ```
@@ -160,23 +169,59 @@ if let secs2Body = primaryMessage.secs2Body {
 ```swift
 try await active.reply(
     primaryMessage: primaryMessage,
-    stream: 5,
-    function: 2,
-    wbit: false,
-    secs2Body: SECS2BodyBuilder.shared.build(binary: Data([0x00]))
+    stream:         5,
+    function:       2,
+    wbit:           false,
+    secs2Body:      SECS2BodyBuilder.shared.build(binary: Data([0x00]))
 )
 ```
 
-## state
+## Detect communication state
 
-building...
+### Set handler
 
-// Wait until the status updates to Communicating.
+```swift
+active.didUpdateCommunicationState = { communicating in
+    print("communicating is \(communicating)")
+}
+```
+
+### Wait until communicating
+
+```swift
+try await active.untilCommunicating()
+```
 
 ## SML
 
-building...
+### Send SML
+
+```swift
+let smlMessageString = """
+    S5F1 W
+    <L
+        <B  0x81>
+        <U4 1001>
+        <A  "ON FIRE">
+    >.
+"""
+
+if let smlMessage = try? SMLMessageParser.shared.parse(smlMessageString) {
+    let response = try await passive.send(smlMessage: smlMessage)
+}
+```
+
+### Reply SML
+
+```swift
+if let smlMessage = try? SMLMessageParser.shared.parse("S5F2 <B 0x00>.") {
+    try await active.reply(
+        primaryMessage: primaryMessage,
+        smlMessage:     smlMessage
+    )
+}
+```
 
 ## GEM
 
-building...
+Under construction...
