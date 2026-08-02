@@ -901,7 +901,7 @@ struct SMLMessageParserTests {
                 return
             }
             
-            #expect(error == .missingFinalPeriod)
+            #expect(error == .missingEndPeriod)
         }
         
         @Test func testErrorNotMatch() async throws {

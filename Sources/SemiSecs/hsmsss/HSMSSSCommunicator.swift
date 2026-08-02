@@ -177,21 +177,21 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         self.shutdown()
     }
     
-    /// Mark start, throws if already started or shutdowned.
+    /// Mark start, throws if already started or shutdown.
     ///
     /// - Throws:
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdonwed.
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdown.
     ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
     public func start() throws {
         try self.start(queue: DispatchQueue(label: "defaultDispatchQueueLabel"))
     }
     
-    /// Mark start, throws if already started or shutdowned.
+    /// Mark start, throws if already started or shutdown.
     ///
     /// - Parameters:
     ///   - queue: the DispatchQueue
     /// - Throws:
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdonwed.
+    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdown.
     ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
     public func start(queue: DispatchQueue) throws {
         try self.startAndShutdown.start()

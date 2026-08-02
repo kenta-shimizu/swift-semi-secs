@@ -10,7 +10,7 @@ import Foundation
 /// SMLMessageParseError
 public enum SMLMessageParseError: Error, Equatable, Sendable {
     
-    case missingFinalPeriod
+    case missingEndPeriod
     case notMatch
     case streamOutOfRange
     case functionOutOfRange
@@ -46,7 +46,8 @@ public protocol SMLMessageParsable {
     
     /// Returns parsed SMLMessage.
     ///
-    /// - Parameter of: SMLMessage string
+    /// - Parameters:
+    ///   - of: SMLMessage string
     /// - Returns: parsed SMLMessage
     /// - Throws: SMLMessageParseError
     @discardableResult
@@ -54,7 +55,8 @@ public protocol SMLMessageParsable {
     
     /// Returns SMLMessage parse Result.
     ///
-    /// - Parameter of: SMLMessage string
+    /// - Parameters:
+    ///   - of: SMLMessage string
     /// - Returns: SMLMessage parse Result
     @discardableResult
     func parseToResult(_ of: String) -> Result<SMLMessage, SMLMessageParseError>
@@ -78,7 +80,7 @@ public extension SMLMessageParsable {
     func parseToResult(_ of: String) -> Result<SMLMessage, SMLMessageParseError> {
         
         guard of.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(".") else {
-            return Result.failure(.missingFinalPeriod)
+            return Result.failure(.missingEndPeriod)
         }
         
         let string = String(of)
@@ -116,6 +118,7 @@ public extension SMLMessageParsable {
     }
 }
 
+/// SMLMessageParser
 public final class SMLMessageParser: SMLMessageParsable, Sendable {
     
     public static let shared = SMLMessageParser()
@@ -908,6 +911,7 @@ public extension SMLMessageSECS2BodyParsable {
     
 }
 
+/// SMLMessageSECS2BodyParser
 public final class SMLMessageSECS2BodyParser: SMLMessageSECS2BodyParsable, Sendable {
     
     public static let shared = SMLMessageSECS2BodyParser()
