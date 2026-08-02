@@ -84,7 +84,7 @@ public extension SMLMessageParsable {
         }
         
         let string = String(of)
-        let pattern = /^\s*[Ss](?<stream>\d+)[Ff](?<function>\d+)\s*(?<wbit>[Ww]?)\s*(?<secs2body>(<.+>)?)\s*\.\s*$/
+        let pattern = /^\s*[Ss](?<stream>\d+)[Ff](?<function>\d+)\s*(?<wbit>[Ww]?)\s*(?<secs2body>(<[\s\S]+>)?)\s*\.\s*$/
         
         guard let match = string.wholeMatch(of: pattern) else {
             return Result.failure(.notMatch)

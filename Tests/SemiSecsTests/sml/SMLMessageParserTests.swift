@@ -55,6 +55,34 @@ struct SMLMessageParserTests {
             }
             
         }
+        
+        @Test func testParseSMLMessageLiteral() async throws {
+            
+            let string = """
+            S1F2
+            <L
+            >.
+            """
+            
+            let result = SMLMessageParser.shared.parseToResult(string)
+            
+            switch result {
+            case .success(let smlMessage):
+                #expect(smlMessage.stream == 1)
+                #expect(smlMessage.function == 2)
+                #expect(smlMessage.wbit == false)
+                #expect(smlMessage.secs2Body != nil)
+                
+                if let secs2Body = smlMessage.secs2Body {
+                    #expect(secs2Body.type == .list)
+                    #expect(secs2Body.count == 0)
+                }
+                
+            case .failure:
+                Issue.record("failed")
+            }
+            
+        }
     }
     
     @Suite struct SECS2BodyParser {
