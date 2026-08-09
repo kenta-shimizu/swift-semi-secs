@@ -243,21 +243,21 @@ struct SECS2BodyDecoderTests {
         let data1 = Data([0x49, 0x00])
         let c1 = SECS2BodyDecoder.shared.decode(data1)
         
-        #expect(c1?.type == .character2bytes)
+        #expect(c1?.type == .character2Bytes)
         #expect(c1?.data == data1)
         
         // lengthByte-2
         let data2 = Data([0x4A, 0x00, 0x00])
         let c2 = SECS2BodyDecoder.shared.decode(data2)
         
-        #expect(c2?.type == .character2bytes)
+        #expect(c2?.type == .character2Bytes)
         #expect(c2?.data == data2)
         
         // lengthByte-3
         let data3 = Data([0x4B, 0x00, 0x00, 0x00])
         let c3 = SECS2BodyDecoder.shared.decode(data3)
         
-        #expect(c3?.type == .character2bytes)
+        #expect(c3?.type == .character2Bytes)
         #expect(c3?.data == data3)
         
     }

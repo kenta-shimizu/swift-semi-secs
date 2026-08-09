@@ -9,7 +9,7 @@ import Foundation
 
 public struct SECS1Message: SECSMessage, Sendable {
     
-    public struct SECS1MessageBlock : Sendable{
+    public struct SECS1MessageBlock : Sendable {
         
         private let _data: Data
         
@@ -58,16 +58,16 @@ public struct SECS1Message: SECSMessage, Sendable {
     }
     
     private let _header10Bytes: Data
-    private let _secs2Body: (any SECS2Body)?
+    private let _secs2Body: (any SECS2BodyProvider)?
     private let _blocks: [SECS1MessageBlock]
     
-    internal init(header10Bytes: Data, secs2Body: (any SECS2Body)?, blocks: [SECS1MessageBlock]) {
+    internal init(header10Bytes: Data, secs2Body: (any SECS2BodyProvider)?, blocks: [SECS1MessageBlock]) {
         self._header10Bytes = header10Bytes
         self._secs2Body = secs2Body
         self._blocks = blocks
     }
     
-    public var secs2Body: (any SECS2Body)? {
+    public var secs2Body: (any SECS2BodyProvider)? {
         return self._secs2Body
     }
     

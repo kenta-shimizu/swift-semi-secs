@@ -20,7 +20,7 @@ struct HSMSSSMessageBuilderTests {
     @Test func testBuildPrimaryData() async throws {
         
         let equipBuilder = builder(isEquipment: true)
-        let secs2Body = SECS2BodyBuilder.shared.build(list: [])
+        let secs2Body = SECS2Body(list: [])
         let message = equipBuilder.buildPrimaryData(sessionId: 0x1234, stream: 5, function: 1, wbit: false, secs2Body: secs2Body)
         
         #expect(message.header10Bytes[0] == 0x12)
@@ -97,7 +97,7 @@ struct HSMSSSMessageBuilderTests {
         let primaryMessage = hostBuilder.buildPrimaryData(sessionId: 0x1234, stream: 1, function: 3, wbit: true)
         
         let equipBuilder = builder(isEquipment: true)
-        let responseSECS2Body = SECS2BodyBuilder.shared.build(list: [])
+        let responseSECS2Body = SECS2Body(list: [])
         let message = equipBuilder.buildResponseData(primaryMessage: primaryMessage, stream: 1, function: 4, wbit: false, secs2Body: responseSECS2Body)
         
         #expect(message.header10Bytes[0] == 0x12)
@@ -139,12 +139,12 @@ struct HSMSSSMessageBuilderTests {
     @Test func testBuildResponseDataBySMLMessage() async throws {
         
         let equipBuilder = builder(isEquipment: true)
-        let primarySECS2Body = SECS2BodyBuilder.shared.build(list: [])
+        let primarySECS2Body = SECS2Body(list: [])
         let primarySMLMessage = SMLMessage(stream: 6, function: 11, wbit: true, secs2Body: primarySECS2Body)
         let primaryMessage = equipBuilder.buildPrimaryData(sessionId: 0x1234, smlMessage: primarySMLMessage)
         
         let hostBuilder = builder(isEquipment: false)
-        let responseSECS2Body = SECS2BodyBuilder.shared.build(binary: Data([0x00]))
+        let responseSECS2Body = SECS2Body(binary: Data([0x00]))
         let responseSMLMessage = SMLMessage(stream: 6, function: 12, wbit: false, secs2Body: responseSECS2Body)
         let message = hostBuilder.buildResponseData(primaryMessage: primaryMessage, smlMessage: responseSMLMessage)
         

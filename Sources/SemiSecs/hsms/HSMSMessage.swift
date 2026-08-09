@@ -231,10 +231,10 @@ public struct HSMSMessage: SECSMessage {
     
     
     private let _header10Bytes: Data
-    private let _secs2Body: (any SECS2Body)?
+    private let _secs2Body: (any SECS2BodyProvider)?
     
     internal init(header10Bytes: Data, secs2Body:
-    (any SECS2Body)?) {
+    (any SECS2BodyProvider)?) {
         self._header10Bytes = header10Bytes
         self._secs2Body = secs2Body
     }
@@ -254,7 +254,7 @@ public struct HSMSMessage: SECSMessage {
         return self._header10Bytes.count + (self._secs2Body?.data.count ?? 0)
     }
     
-    public var secs2Body: (any SECS2Body)? {
+    public var secs2Body: (any SECS2BodyProvider)? {
         return self._secs2Body
     }
     

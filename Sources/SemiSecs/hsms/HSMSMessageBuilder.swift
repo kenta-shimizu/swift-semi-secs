@@ -16,7 +16,7 @@ public protocol HSMSMessageBuildable {
     ///   - header10Bytes: the Header10Bytes
     ///   - secs2Body: the SECS2Body
     /// - Returns: HSMSMessage
-    func build(header10Bytes: Data, secs2Body: (any SECS2Body)?) -> HSMSMessage
+    func build(header10Bytes: Data, secs2Body: (any SECS2BodyProvider)?) -> HSMSMessage
     
     /// Build primary-Data-HSMSMessage.
     ///
@@ -27,7 +27,7 @@ public protocol HSMSMessageBuildable {
     ///   - wbit: the wbit
     ///   - secs2Body: SECS-II-Body
     /// - Returns: Primary HSMSMessage
-    func buildPrimaryData(sessionId: UInt16, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) -> HSMSMessage
+    func buildPrimaryData(sessionId: UInt16, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2BodyProvider)?) -> HSMSMessage
     
     /// Build primary-Data-HSMSMessage.
     ///
@@ -46,7 +46,7 @@ public protocol HSMSMessageBuildable {
     ///   - wbit: the wbit
     ///   - secs2Body: SECS-II-Body
     /// - Returns: Response HSMSMessage
-    func buildResponseData(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)?) -> HSMSMessage
+    func buildResponseData(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2BodyProvider)?) -> HSMSMessage
     
     /// Build response-message.
     ///
@@ -120,16 +120,16 @@ public protocol HSMSMessageBuildable {
 
 public extension HSMSMessageBuildable {
     
-    func build(header10Bytes: Data, secs2Body: (any SECS2Body)? = nil) -> HSMSMessage {
+    func build(header10Bytes: Data, secs2Body: (any SECS2BodyProvider)? = nil) -> HSMSMessage {
         return HSMSMessage(header10Bytes: header10Bytes, secs2Body: secs2Body)
     }
     
-    func buildPrimaryData(sessionId: UInt16, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)? = nil) -> HSMSMessage {
+    func buildPrimaryData(sessionId: UInt16, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2BodyProvider)? = nil) -> HSMSMessage {
         let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
         return self.buildPrimaryData(sessionId: sessionId, smlMessage: smlMessage)
     }
     
-    func buildResponseData(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)? = nil) -> HSMSMessage {
+    func buildResponseData(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2BodyProvider)? = nil) -> HSMSMessage {
         let smlMessage = SMLMessage(stream: stream, function: function, wbit: wbit, secs2Body: secs2Body)
         return self.buildResponseData(primaryMessage: primaryMessage, smlMessage: smlMessage)
     }

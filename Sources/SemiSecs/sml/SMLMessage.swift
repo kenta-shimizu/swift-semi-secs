@@ -18,9 +18,9 @@ public struct SMLMessage: CustomStringConvertible, Sendable {
     public private(set) var wbit: Bool
     
     /// SECS-II-Body Readonly.
-    public private(set) var secs2Body: (any SECS2Body)?
+    public private(set) var secs2Body: (any SECS2BodyProvider)?
     
-    internal init(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2Body)? = nil) {
+    internal init(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2BodyProvider)? = nil) {
         guard (0...127).contains(stream) else {
             fatalError("stream is in (0...127). stream: \"\(stream)\"")
         }
