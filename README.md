@@ -27,7 +27,7 @@ import SemiSecs
 
 ## Create Communicator instance and start
 
-- HSMS-SS Active
+### HSMS-SS Active
 
 ```swift
 let active = HSMSSSCommunicator()
@@ -46,7 +46,7 @@ active.config.linktestDuration = .seconds(120.0)
 try active.start()
 ```
 
-- HSMS-SS Passive
+### HSMS-SS Passive
 
 ```swift
 let passive = HSMSSSCommunicator()
@@ -77,14 +77,12 @@ active.shutdown()
 1. Create SECS-II-Body
 
 ```swift
-let builder = SECS2BodyBuilder.shared
-
 let secs2Body =
-builder.build(list: [                       // <L
-    builder.build(binary: Data([0x81])),    //     <B  0x81 >
-    builder.build(uint4:  [1001]),          //     <U4 1001 >
-    builder.build(ascii:  "ON FIRE")        //     <A "ON FIRE" >
-])                                          // >
+SECS2Body(list: [                       // <L
+    SECS2Body(binary: Data([0x81])),    //     <B  0x81 >
+    SECS2Body(uint4:  [1001]),          //     <U4 1001 >
+    SECS2Body(ascii:  "ON FIRE")        //     <A  "ON FIRE" >
+])                                      // >
 ```
 
 2. Send message
@@ -172,7 +170,7 @@ try await active.reply(
     stream:         5,
     function:       2,
     wbit:           false,
-    secs2Body:      SECS2BodyBuilder.shared.build(binary: Data([0x00]))
+    secs2Body:      SECS2Body(binary: Data([0x00]))
 )
 ```
 

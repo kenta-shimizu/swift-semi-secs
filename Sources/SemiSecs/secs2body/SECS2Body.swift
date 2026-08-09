@@ -7,1432 +7,451 @@
 
 import Foundation
 
-/// SECS-II-Body
-public protocol SECS2Body: Equatable, Sequence, CustomStringConvertible, CustomDebugStringConvertible, Sendable {
+public struct SECS2Body: SECS2BodyProvider {
     
-    var type: SECS2BodyItemType { get }
-    var count: Int { get }
+    internal nonisolated(unsafe) let inner: SECS2BodyInnerBase
     
-    var data: Data { get }
-    var smlString: String { get }
-    var value: Any? { get }
-    
-    subscript(index: Int) -> Any? { get }
-    
-    @discardableResult
-    func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2Body)?
-
-    @discardableResult
-    func boolValue(at: Int, _ indices: Int...) -> Bool?
-    
-    @discardableResult
-    func stringValue(at: Int...) -> String?
-    
-    @discardableResult
-    func int8Value(at: Int, _ indices: Int...) -> Int8?
-    
-    @discardableResult
-    func int16Value(at: Int, _ indices: Int...) -> Int16?
-    
-    @discardableResult
-    func int32Value(at: Int, _ indices: Int...) -> Int32?
-    
-    @discardableResult
-    func int64Value(at: Int, _ indices: Int...) -> Int64?
-    
-    @discardableResult
-    func uint8Value(at: Int, _ indices: Int...) -> UInt8?
-    
-    @discardableResult
-    func uint16Value(at: Int, _ indices: Int...) -> UInt16?
-    
-    @discardableResult
-    func uint32Value(at: Int, _ indices: Int...) -> UInt32?
-    
-    @discardableResult
-    func uint64Value(at: Int, _ indices: Int...) -> UInt64?
-    
-    @discardableResult
-    func floatValue(at: Int, _ indices: Int...) -> Float?
-    
-    @discardableResult
-    func doubleValue(at: Int, _ indices: Int...) -> Double?
-    
-    @discardableResult
-    func anyValue(at: Int...) -> Any?
-    
-}
-
-public extension SECS2Body {
-    
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        return lhs.data == rhs.data
-    }
-    
-    var description: String {
-        return self.smlString
-    }
-
-    var debugDescription: String {
-        return self.smlString
-    }
-    
-    var value: Any? {
-        return nil
-    }
-
-    subscript(index: Int) -> Any? {
-        return nil
-    }
-    
-    @discardableResult
-    func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2Body)? {
-        return nil
-    }
-    
-    @discardableResult
-    func boolValue(at: Int, _ indices: Int...) -> Bool? {
-        return nil
-    }
-    
-    @discardableResult
-    func stringValue(at: Int...) -> String? {
-        return nil
-    }
-    
-    @discardableResult
-    func int8Value(at: Int, _ indices: Int...) -> Int8? {
-        return nil
-    }
-    
-    @discardableResult
-    func int16Value(at: Int, _ indices: Int...) -> Int16? {
-        return nil
-    }
-    
-    @discardableResult
-    func int32Value(at: Int, _ indices: Int...) -> Int32? {
-        return nil
-    }
-    
-    @discardableResult
-    func int64Value(at: Int, _ indices: Int...) -> Int64? {
-        return nil
-    }
-    
-    @discardableResult
-    func uint8Value(at: Int, _ indices: Int...) -> UInt8? {
-        return nil
-    }
-    
-    @discardableResult
-    func uint16Value(at: Int, _ indices: Int...) -> UInt16? {
-        return nil
-    }
-    
-    @discardableResult
-    func uint32Value(at: Int, _ indices: Int...) -> UInt32? {
-        return nil
-    }
-    
-    @discardableResult
-    func uint64Value(at: Int, _ indices: Int...) -> UInt64? {
-        return nil
-    }
-    
-    @discardableResult
-    func floatValue(at: Int, _ indices: Int...) -> Float? {
-        return nil
-    }
-    
-    @discardableResult
-    func doubleValue(at: Int, _ indices: Int...) -> Double? {
-        return nil
-    }
-    
-    @discardableResult
-    func anyValue(at: Int...) -> Any? {
-        return nil
-    }
-    
-}
-
-public protocol SECS2BaseBody: SECS2Body {
-    
-    var smlValueString: String { get }
-    
-    @discardableResult
-    func smlString(indent: String) -> String
-    
-    func secs2BodyValue(indices: [Int]) -> (any SECS2Body)?
-    func boolValue(indices: [Int]) -> Bool?
-    func stringValue(indices: [Int]) -> String?
-    func int8Value(indices: [Int]) -> Int8?
-    func int16Value(indices: [Int]) -> Int16?
-    func int32Value(indices: [Int]) -> Int32?
-    func int64Value(indices: [Int]) -> Int64?
-    func uint8Value(indices: [Int]) -> UInt8?
-    func uint16Value(indices: [Int]) -> UInt16?
-    func uint32Value(indices: [Int]) -> UInt32?
-    func uint64Value(indices: [Int]) -> UInt64?
-    func floatValue(indices: [Int]) -> Float?
-    func doubleValue(indices: [Int]) -> Double?
-    func anyValue(indices: [Int]) -> Any?
-    
-}
-
-public extension SECS2BaseBody {
-
-    var smlString: String {
-        return self.smlString(indent: "")
-    }
-    
-    @discardableResult
-    func smlString(indent: String) -> String {
-        return "\(indent)<\(self.type.smlString) [\(self.count)] \(self.smlValueString)>"
-    }
-    
-    func secs2BodyValue(indices: [Int]) -> (any SECS2Body)? {
-        return nil
-    }
-    
-    func boolValue(indices: [Int]) -> Bool? {
-        return nil
-    }
-    
-    func stringValue(indices: [Int]) -> String? {
-        return nil
-    }
-    
-    func int8Value(indices: [Int]) -> Int8? {
-        return nil
-    }
-    
-    func int16Value(indices: [Int]) -> Int16? {
-        return nil
-    }
-    
-    func int32Value(indices: [Int]) -> Int32? {
-        return nil
-    }
-    
-    func int64Value(indices: [Int]) -> Int64? {
-        return nil
-    }
-    
-    func uint8Value(indices: [Int]) -> UInt8? {
-        return nil
-    }
-    
-    func uint16Value(indices: [Int]) -> UInt16? {
-        return nil
-    }
-    
-    func uint32Value(indices: [Int]) -> UInt32? {
-        return nil
-    }
-    
-    func uint64Value(indices: [Int]) -> UInt64? {
-        return nil
-    }
-    
-    func floatValue(indices: [Int]) -> Float? {
-        return nil
-    }
-    
-    func doubleValue(indices: [Int]) -> Double? {
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        return nil
-    }
-    
-    @discardableResult
-    func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2Body)? {
-        return self.secs2BodyValue(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func boolValue(at: Int, _ indices: Int...) -> Bool? {
-        return self.boolValue(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func stringValue(at: Int...) -> String? {
-        return self.stringValue(indices: at)
-    }
-    
-    @discardableResult
-    func int8Value(at: Int, _ indices: Int...) -> Int8? {
-        return self.int8Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func int16Value(at: Int, _ indices: Int...) -> Int16? {
-        return self.int16Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func int32Value(at: Int, _ indices: Int...) -> Int32? {
-        return self.int32Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func int64Value(at: Int, _ indices: Int...) -> Int64? {
-        return self.int64Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func uint8Value(at: Int, _ indices: Int...) -> UInt8? {
-        return self.uint8Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func uint16Value(at: Int, _ indices: Int...) -> UInt16? {
-        return self.uint16Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func uint32Value(at: Int, _ indices: Int...) -> UInt32? {
-        return self.uint32Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func uint64Value(at: Int, _ indices: Int...) -> UInt64? {
-        return self.uint64Value(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func floatValue(at: Int, _ indices: Int...) -> Float? {
-        return self.floatValue(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func doubleValue(at: Int, _ indices: Int...) -> Double? {
-        return self.doubleValue(indices: [at] + indices)
-    }
-    
-    @discardableResult
-    func anyValue(at: Int...) -> Any? {
-        return self.anyValue(indices: at)
-    }
-    
-}
-
-/// SECS2ListBody
-internal final class SECS2ListBody: SECS2BaseBody {
-    
-    private let _value: [any SECS2BaseBody]
-    private let _data: Data?
-    
-    internal init(values: [any SECS2BaseBody], data: Data?) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .list
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data ?? SECS2BodyEncoder.shared.encode(list: self._value)
-    }
-    
-    private static let lineSeparator = "\n"
-    private static let indent = "  "
-    
-    @discardableResult
-    func smlString(indent: String) -> String {
-        var r = "\(indent)<\(self.type.smlString) [\(self.count)]\(Self.lineSeparator)"
-        for v in self._value {
-            r.append(v.smlString(indent: (indent + Self.indent)))
-            r.append(Self.lineSeparator)
-        }
-        r.append("\(indent)>")
-        return r
-    }
-    
-    var smlValueString: String {
-        return ""
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        return self.secs2BaseBodyValue(index: index)
-    }
-    
-    func makeIterator() -> IndexingIterator<[any SECS2Body]> {
-        return (self._value as [any SECS2Body]).makeIterator()
-    }
-    
-    private func secs2BaseBodyValue(index: Int) -> (any SECS2BaseBody)? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func secs2BodyValue(indices: [Int]) -> (any SECS2Body)? {
-        let r = self.secs2BaseBodyValue(index: indices[0])
-        if indices.count > 1 {
-            return r?.secs2BodyValue(indices: Array(indices.dropFirst()))
-        } else {
-            return r
+    public var count: Int {
+        get {
+            return self.inner.count
         }
     }
     
-    func boolValue(indices: [Int]) -> Bool? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.boolValue(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func stringValue(indices: [Int]) -> String? {
-        if indices.count > 0 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.stringValue(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func int8Value(indices: [Int]) -> Int8? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.int8Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func int16Value(indices: [Int]) -> Int16? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.int16Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func int32Value(indices: [Int]) -> Int32? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.int32Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func int64Value(indices: [Int]) -> Int64? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.int64Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func uint8Value(indices: [Int]) -> UInt8? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.uint8Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func uint16Value(indices: [Int]) -> UInt16? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.uint16Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func uint32Value(indices: [Int]) -> UInt32? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.uint32Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func uint64Value(indices: [Int]) -> UInt64? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.uint64Value(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func floatValue(indices: [Int]) -> Float? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.floatValue(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func doubleValue(indices: [Int]) -> Double? {
-        if indices.count > 1 {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.doubleValue(indices: Array(indices.dropFirst()))
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self.value
-        } else {
-            let r = self.secs2BaseBodyValue(index: indices[0])
-            return r?.anyValue(indices: Array(indices.dropFirst()))
+    public var type: SECS2BodyItemType {
+        get {
+            return self.inner.type
         }
     }
     
-}
-
-internal struct SECS2BinaryBody: SECS2BaseBody {
-    
-    private let _value: Data
-    private let _data: Data
-    
-    internal init(values: Data, data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .binary
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { String(format: "0x%02X ", $0) }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
+    public var data: Data {
+        get {
+            return self.inner.data
         }
-        return nil
     }
     
-    func makeIterator() -> Data.Iterator {
-        return self._value.makeIterator()
-    }
-    
-    func uint8Value(indices: [Int]) -> UInt8? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
+    public var smlString: String {
+        get {
+            return self.inner.smlString(indent: "")
         }
-        return nil
     }
     
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.uint8Value(indices: indices)
+    public subscript(index: Int) -> (any SECS2BodyProvider)? {
+        return self.inner.secs2BodyValue(at: index)
     }
     
-}
-
-internal struct SECS2BooleanBody: SECS2BaseBody {
-    
-    private let _value: [Bool]
-    private let _data: Data
-    
-    internal init(values: [Bool], data: Data) {
-        self._value = values
-        self._data = data
+    public func makeIterator() -> IndexingIterator<[any SECS2BodyProvider]> {
+        return self.inner.makeIterator()
     }
     
-    var type: SECS2BodyItemType {
-        return .boolean
+    // MARK: getter
+    
+    public var value: Any? {
+        return self.inner.value
     }
     
-    var count: Int {
-        return self._value.count
+    @discardableResult
+    public func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2BodyProvider)? {
+        let array = [at] + indices
+        return self.deepSecs2BodyValue(indices: array)
     }
     
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0 ? "TRUE" : "FALSE") " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[Bool]> {
-        return self._value.makeIterator()
-    }
-    
-    func boolValue(indices: [Int]) -> Bool? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.boolValue(indices: indices)
-    }
-    
-}
-
-internal struct SECS2AsciiBody: SECS2BaseBody {
-    
-    private let _value: String
-    private let _data: Data
-    
-    internal init(values: String, data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .ascii
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return "\"\(self._value)\" "
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        let chars = Array(self._value)
-        return chars.indices.contains(index) ? chars[index] : nil
-    }
-    
-    func makeIterator() -> String.Iterator {
-        return self._value.makeIterator()
-    }
-    
-    func stringValue(indices: [Int]) -> String? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.count == 0 {
-            return self._value
-        } else if indices.count == 1 {
-            let chars = Array(self._value)
-            let index = indices[0]
-            if chars.indices.contains(index) {
-                return chars[index]
-            }
+    @discardableResult
+    public func boolValue(at: Int, _ indices: Int...) -> Bool? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
             return nil
         }
-        return nil
-    }
-
-}
-
-internal struct SECS2JIS8Body: SECS2BaseBody {
-    
-    private let _value: Data
-    private let _data: Data
-    
-    internal init(values: Data, data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .jis8
-    }
-    
-    var count: Int {
-        return self._data.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return "UNSUPPORT "
-    }
-    
-    subscript(index: Int) -> Any? {
-        return nil
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    func makeIterator() -> Data.Iterator {
-        return self._value.makeIterator()
-    }
-    
-}
-
-internal struct SECS2Character2BytesBody: SECS2BaseBody {
-    
-    private let _value: Data
-    private let _data: Data
-    
-    internal init(values: Data, data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .character2bytes
-    }
-    
-    var count: Int {
-        return self._data.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return "UNSUPPORT "
-    }
-    
-    subscript(index: Int) -> Any? {
-        return nil
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    func makeIterator() -> Data.Iterator {
-        return self._value.makeIterator()
-    }
-    
-}
-
-internal struct SECS2Int1Body: SECS2BaseBody {
-    
-    private let _value: [Int8]
-    private let _data: Data
-    
-    internal init(values: [Int8], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .int1
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
+        if let body = provider as? SECS2Body {
+            return body.inner.boolValue(at: last)
+        } else {
+            return provider.boolValue(at: last)
         }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[Int8]> {
-        return self._value.makeIterator()
-    }
-    
-    func int8Value(indices: [Int]) -> Int8? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.int8Value(indices: indices)
-    }
-
-}
-
-internal struct SECS2Int2Body: SECS2BaseBody {
-    
-    private let _value: [Int16]
-    private let _data: Data
-    
-    internal init(values: [Int16], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .int2
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[Int16]> {
-        return self._value.makeIterator()
-    }
-    
-    func int16Value(indices: [Int]) -> Int16? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.int16Value(indices: indices)
-    }
-
-}
-
-internal struct SECS2Int4Body: SECS2BaseBody {
-    
-    private let _value: [Int32]
-    private let _data: Data
-    
-    internal init(values: [Int32], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .int4
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[Int32]> {
-        return self._value.makeIterator()
-    }
-    
-    func int32Value(indices: [Int]) -> Int32? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.int32Value( indices: indices)
-    }
-
-}
-
-internal struct SECS2Int8Body: SECS2BaseBody {
-    
-    private let _value: [Int64]
-    private let _data: Data
-    
-    internal init(values: [Int64], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .int8
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[Int64]> {
-        return self._value.makeIterator()
-    }
-    
-    func int64Value(indices: [Int]) -> Int64? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.int64Value(indices: indices)
-    }
-
-}
-
-internal struct SECS2UInt1Body: SECS2BaseBody {
-    
-    private let _value: [UInt8]
-    private let _data: Data
-    
-    internal init(values: [UInt8], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .uint1
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[UInt8]> {
-        return self._value.makeIterator()
-    }
-    
-    func uint8Value(indices: [Int]) -> UInt8? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.uint8Value(indices: indices)
-    }
-
-}
-
-internal struct SECS2UInt2Body: SECS2BaseBody {
-    
-    private let _value: [UInt16]
-    private let _data: Data
-    
-    internal init(values: [UInt16], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .uint2
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[UInt16]> {
-        return self._value.makeIterator()
-    }
-    
-    func uint16Value(indices: [Int]) -> UInt16? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.uint16Value(indices: indices)
-    }
-
-}
-
-internal struct SECS2UInt4Body: SECS2BaseBody {
-    
-    private let _value: [UInt32]
-    private let _data: Data
-    
-    internal init(values: [UInt32], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .uint4
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[UInt32]> {
-        return self._value.makeIterator()
-    }
-    
-    func uint32Value(indices: [Int]) -> UInt32? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.uint32Value(indices: indices)
-    }
-
-}
-
-internal struct SECS2UInt8Body: SECS2BaseBody {
-    
-    private let _value: [UInt64]
-    private let _data: Data
-    
-    internal init(values: [UInt64], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .uint8
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[UInt64]> {
-        return self._value.makeIterator()
-    }
-    
-    func uint64Value(indices: [Int]) -> UInt64? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.uint64Value(indices: indices)
-    }
-
-}
-
-internal struct SECS2Float4Body: SECS2BaseBody {
-    
-    private let _value: [Float]
-    private let _data: Data
-    
-    internal init(values: [Float], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .float4
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[Float]> {
-        return self._value.makeIterator()
-    }
-    
-    func floatValue(indices: [Int]) -> Float? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.floatValue(indices: indices)
-    }
-
-}
-
-internal struct SECS2Float8Body: SECS2BaseBody {
-    
-    private let _value: [Double]
-    private let _data: Data
-    
-    internal init(values: [Double], data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .float8
-    }
-    
-    var count: Int {
-        return self._value.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return self._value.map { "\($0) " }.joined()
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    subscript(index: Int) -> Any? {
-        if self._value.indices.contains(index) {
-            return self._value[index]
-        }
-        return nil
-    }
-    
-    func makeIterator() -> IndexingIterator<[Double]> {
-        return self._value.makeIterator()
-    }
-    
-    func doubleValue(indices: [Int]) -> Double? {
-        if indices.count == 1 {
-            let index = indices[0]
-            if self._value.indices.contains(index) {
-                return self._value[index]
-            }
-        }
-        return nil
-    }
-    
-    func anyValue(indices: [Int]) -> Any? {
-        if indices.isEmpty {
-            return self._value
-        }
-        return self.doubleValue(indices: indices)
-    }
-
-}
-
-internal struct SECS2UnknownBody: SECS2BaseBody {
-    
-    private let _value: Data
-    private let _data: Data
-    
-    internal init(values: Data, data: Data) {
-        self._value = values
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .unknown
-    }
-    
-    var count: Int {
-        return self._data.count
-    }
-    
-    var data: Data {
-        return self._data
-    }
-    
-    var smlValueString: String {
-        return "UNKNOWN "
-    }
-    
-    subscript(index: Int) -> Any? {
-        return nil
-    }
-    
-    var value: Any? {
-        return self._value
-    }
-    
-    func makeIterator() -> Data.Iterator {
-        return self._value.makeIterator()
-    }
-    
-}
-
-internal struct SECS2ErrorBody: SECS2BaseBody {
-    
-    private let _data: Data
-    
-    internal init(data: Data) {
-        self._data = data
-    }
-    
-    var type: SECS2BodyItemType {
-        return .error
-    }
-    
-    var count: Int {
-        return -1
-    }
-    
-    var data: Data {
-        return self._data
     }
     
     @discardableResult
-    func smlString(indent: String) -> String {
-        return "\(indent)<\(self.type.smlString) [?] >"
+    public func stringValue(at: Int...) -> String? {
+        guard let provider = self.deepSecs2BodyValue(indices: at) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.stringValue()
+        } else {
+            return provider.stringValue()
+        }
     }
     
-    var smlValueString: String {
-        return ""
+    @discardableResult
+    public func int8Value(at: Int, _ indices: Int...) -> Int8? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.int8Value(at: last)
+        } else {
+            return provider.int8Value(at: last)
+        }
     }
     
-    subscript(index: Int) -> Any? {
+    @discardableResult
+    public func int16Value(at: Int, _ indices: Int...) -> Int16? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.int16Value(at: last)
+        } else {
+            return provider.int16Value(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func int32Value(at: Int, _ indices: Int...) -> Int32? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.int32Value(at: last)
+        } else {
+            return provider.int32Value(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func int64Value(at: Int, _ indices: Int...) -> Int64? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.int64Value(at: last)
+        } else {
+            return provider.int64Value(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func uint8Value(at: Int, _ indices: Int...) -> UInt8? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.uint8Value(at: last)
+        } else {
+            return provider.uint8Value(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func uint16Value(at: Int, _ indices: Int...) -> UInt16? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.uint16Value(at: last)
+        } else {
+            return provider.uint16Value(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func uint32Value(at: Int, _ indices: Int...) -> UInt32? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.uint32Value(at: last)
+        } else {
+            return provider.uint32Value(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func uint64Value(at: Int, _ indices: Int...) -> UInt64? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.uint64Value(at: last)
+        } else {
+            return provider.uint64Value(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func floatValue(at: Int, _ indices: Int...) -> Float? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.floatValue(at: last)
+        } else {
+            return provider.floatValue(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func doubleValue(at: Int, _ indices: Int...) -> Double? {
+        var array = [at] + indices
+        let last = array.removeLast()
+        guard let provider = self.deepSecs2BodyValue(indices: array) else {
+            return nil
+        }
+        if let body = provider as? SECS2Body {
+            return body.inner.doubleValue(at: last)
+        } else {
+            return provider.doubleValue(at: last)
+        }
+    }
+    
+    @discardableResult
+    public func anyValue(at: Int...) -> Any? {
+        return self.deepAnyValue(indices: at)
+    }
+    
+    private func deepAnyValue(indices: [Int]) -> Any? {
+        if indices.isEmpty {
+            return self.inner.anyValue(indices: indices)
+        }
+        if case .list = self.type {
+            var array = indices
+            let first = array.removeFirst()
+            guard let provider = self.inner.secs2BodyValue(at: first) else {
+                return nil
+            }
+            if let body = provider as? SECS2Body {
+                return body.deepAnyValue(indices: array)
+            } else {
+                if array.count == 0 {
+                    return provider.anyValue()
+                } else if array.count == 1 {
+                    return provider.anyValue(at: array[0])
+                }
+            }
+        } else {
+            return self.inner.anyValue(indices: indices)
+        }
+        
         return nil
     }
     
-    func makeIterator() -> Data.Iterator {
-        return self._data.makeIterator()
+    private func deepSecs2BodyValue(indices: [Int]) -> (any SECS2BodyProvider)? {
+        if indices.isEmpty {
+            return self
+        }
+        var array = indices
+        let first = array.removeFirst()
+        guard let provider = self.inner.secs2BodyValue(at: first) else {
+            return nil
+        }
+        guard let body = provider as? SECS2Body else {
+            return nil
+        }
+        
+        return body.deepSecs2BodyValue(indices: array)
+    }
+    
+    // MARK: init
+    
+    /// Initializes a new SECS-II List Body instance
+    ///
+    /// - Parameters:
+    ///   - list: The  SECS-II Body Array
+    public init(list: [any SECS2BodyProvider]) {
+        self.init(list: list, data: SECS2BodyEncoder.shared.encode(list: list))
+    }
+    
+    internal init(list: [any SECS2BodyProvider], data: Data) {
+        self.inner = SECS2BodyInnerList(list: list, data: data)
+    }
+    
+    /// Initializes a new SECS-II Binary Body instance
+    ///
+    /// - Parameters:
+    ///   - binary: The Data
+    public init(binary: Data) {
+        self.init(binary: binary, data: SECS2BodyEncoder.shared.encode(binary: binary))
+    }
+    
+    internal init(binary: Data, data: Data) {
+        self.inner = SECS2BodyInnerBinary(binary: binary, data: data)
+    }
+    
+    /// Initializes a new SECS-II Boolean Body instance
+    ///
+    /// - Parameters:
+    ///   - boolean: The Bool Array
+    public init(boolean: [Bool]) {
+        self.init(boolean: boolean, data: SECS2BodyEncoder.shared.encode(boolean: boolean))
+    }
+    
+    internal init(boolean: [Bool], data: Data) {
+        self.inner = SECS2BodyInnerBoolean(boolean: boolean, data: data)
+    }
+    
+    /// Initializes a new SECS-II Ascii Body instance
+    ///
+    /// - Parameters:
+    ///   - ascii: The String
+    public init(ascii: String) {
+        self.init(ascii: ascii, data: SECS2BodyEncoder.shared.encode(ascii: ascii))
+    }
+    
+    internal init(ascii: String, data: Data) {
+        self.inner = SECS2BodyInnerAscii(ascii: ascii, data: data)
+    }
+    
+    internal init(jis8: Data, data: Data) {
+        self.inner = SECS2BodyInnerJis8(jis8: jis8, data: data)
+    }
+    
+    internal init(character2Bytes: Data, data: Data) {
+        self.inner = SECS2BodyInnerCharacter2Bytes(character2Bytes: character2Bytes, data: data)
+    }
+    
+    /// Initializes a new SECS-II 1-byte Signed Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - int1: The Int8 Array
+    public init(int1: [Int8]) {
+        self.init(int1: int1, data: SECS2BodyEncoder.shared.encode(int1: int1))
+    }
+    
+    internal init(int1: [Int8], data: Data) {
+        self.inner = SECS2BodyInnerInt1(int1: int1, data: data)
+    }
+    
+    /// Initializes a new SECS-II 2-byte Signed Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - int2: The Int16 Array
+    public init(int2: [Int16]) {
+        self.init(int2: int2, data: SECS2BodyEncoder.shared.encode(int2: int2))
+    }
+    
+    internal init(int2: [Int16], data: Data) {
+        self.inner = SECS2BodyInnerInt2(int2: int2, data: data)
+    }
+    
+    /// Initializes a new SECS-II 4-byte Signed Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - int4: The Int32 Array
+    public init(int4: [Int32]) {
+        self.init(int4: int4, data: SECS2BodyEncoder.shared.encode(int4: int4))
+    }
+    
+    internal init(int4: [Int32], data: Data) {
+        self.inner = SECS2BodyInnerInt4(int4: int4, data: data)
+    }
+    
+    /// Initializes a new SECS-II 8-byte Signed Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - int8: The Int64 Array
+    public init(int8: [Int64]) {
+        self.init(int8: int8, data: SECS2BodyEncoder.shared.encode(int8: int8))
+    }
+    
+    internal init(int8: [Int64], data: Data) {
+        self.inner = SECS2BodyInnerInt8(int8: int8, data: data)
+    }
+    
+    /// Initializes a new SECS-II 1-byte Unsigned Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - uint1: The UInt8 Array
+    public init(uint1: [UInt8]) {
+        self.init(uint1: uint1, data: SECS2BodyEncoder.shared.encode(uint1: uint1))
+    }
+    
+    internal init(uint1: [UInt8], data: Data) {
+        self.inner = SECS2BodyInnerUInt1(uint1: uint1, data: data)
+    }
+    
+    /// Initializes a new SECS-II 2-byte Unsigned Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - uint2: The UInt16 Array
+    public init(uint2: [UInt16]) {
+        self.init(uint2: uint2, data: SECS2BodyEncoder.shared.encode(uint2: uint2))
+    }
+    
+    internal init(uint2: [UInt16], data: Data) {
+        self.inner = SECS2BodyInnerUInt2(uint2: uint2, data: data)
+    }
+    
+    /// Initializes a new SECS-II 4-byte Unsigned Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - uint4: The UInt32 Array
+    public init(uint4: [UInt32]) {
+        self.init(uint4: uint4, data: SECS2BodyEncoder.shared.encode(uint4: uint4))
+    }
+    
+    internal init(uint4: [UInt32], data: Data) {
+        self.inner = SECS2BodyInnerUInt4(uint4: uint4, data: data)
+    }
+    
+    /// Initializes a new SECS-II 8-byte Unsigned Integer Body instance
+    ///
+    /// - Parameters:
+    ///   - uint8: The UInt64 Array
+    public init(uint8: [UInt64]) {
+        self.init(uint8: uint8, data: SECS2BodyEncoder.shared.encode(uint8: uint8))
+    }
+    
+    internal init(uint8: [UInt64], data: Data) {
+        self.inner = SECS2BodyInnerUInt8(uint8: uint8, data: data)
+    }
+    
+    /// Initializes a new SECS-II 4-byte Floating-Point Body instance
+    ///
+    /// - Parameters:
+    ///   - float4: The Float Array
+    public init(float4: [Float]) {
+        self.init(float4: float4, data: SECS2BodyEncoder.shared.encode(float4: float4))
+    }
+    
+    internal init(float4: [Float], data: Data) {
+        self.inner = SECS2BodyInnerFloat4(float4: float4, data: data)
+    }
+    
+    /// Initializes a new SECS-II 8-byte Floating-Point Body instance
+    ///
+    /// - Parameters:
+    ///   - float8: The Double Array
+    public init(float8: [Double]) {
+        self.init(float8: float8, data: SECS2BodyEncoder.shared.encode(float8: float8))
+    }
+    
+    internal init(float8: [Double], data: Data) {
+        self.inner = SECS2BodyInnerFloat8(float8: float8, data: data)
+    }
+    
+    internal init(unknown: Data, data: Data) {
+        self.inner = SECS2BodyInnerUnknown(unknown: unknown, data: data)
+    }
+    
+    internal init(error: Data) {
+        self.inner = SECS2BodyInnerError(error: error)
     }
     
 }

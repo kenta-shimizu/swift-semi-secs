@@ -10,14 +10,14 @@ import Foundation
 public protocol SECS2BodyDecodable {
     
     @discardableResult
-    func decode(_ data: Data) -> (any SECS2Body)?
+    func decode(_ data: Data) -> SECS2Body?
     
 }
 
 public extension SECS2BodyDecodable {
     
     @discardableResult
-    func decode(_ data: Data) -> (any SECS2Body)? {
+    func decode(_ data: Data) -> SECS2Body? {
         if data.isEmpty {
             return nil
         } else {
@@ -25,15 +25,15 @@ public extension SECS2BodyDecodable {
                 if r.endIndex == data.endIndex {
                     return r.secs2Body
                 } else {
-                    return SECS2ErrorBody(data: data)
+                    return SECS2Body(error: data)
                 }
             } else {
-                return SECS2ErrorBody(data: data)
+                return SECS2Body(error: data)
             }
         }
     }
     
-    private func decode(data: Data, startIndex: Data.Index) -> (secs2Body: any SECS2Body, endIndex: Data.Index)? {
+    private func decode(data: Data, startIndex: Data.Index) -> (secs2Body: SECS2Body, endIndex: Data.Index)? {
         
         guard let r = self.decodeItemTypeAndSize(data: data, startIndex: startIndex) else {
             return nil
@@ -41,18 +41,18 @@ public extension SECS2BodyDecodable {
         
         if r.itemType == .list {
             
-            var values: [any SECS2BaseBody] = []
+            var values: [any SECS2BodyProvider] = []
             var endIndex = startIndex + r.skip
             for _ in 0..<r.size {
                 guard let rr = self.decode(data: data, startIndex: endIndex) else {
                     return nil
                 }
-                values.append(rr.secs2Body as! (any SECS2BaseBody))
+                values.append(rr.secs2Body as (any SECS2BodyProvider))
                 endIndex = rr.endIndex
             }
             let dataData = data.subdata(in: startIndex..<endIndex)
             
-            return (secs2Body: SECS2ListBody(values: values, data: dataData), endIndex: endIndex)
+            return (secs2Body: SECS2Body(list: values, data: dataData), endIndex: endIndex)
             
         } else {
             
@@ -65,29 +65,29 @@ public extension SECS2BodyDecodable {
             
             switch r.itemType {
             case .binary:
-                return (secs2Body: SECS2BinaryBody(values: valueData, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(binary: valueData, data: dataData), endIndex: endIndex)
                 
             case .boolean:
                 let values = valueData.map { $0 != 0x00 }
-                return (secs2Body: SECS2BooleanBody(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(boolean: values, data: dataData), endIndex: endIndex)
                 
             case .ascii:
                 guard let asciiString = String(data: valueData, encoding: .ascii) else {
                     return nil
                 }
-                return (secs2Body: SECS2AsciiBody(values: asciiString, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(ascii: asciiString, data: dataData), endIndex: endIndex)
                 
             case .jis8:
-                return (secs2Body: SECS2JIS8Body(values: valueData, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(jis8: valueData, data: dataData), endIndex: endIndex)
                 
-            case .character2bytes:
-                return (secs2Body: SECS2Character2BytesBody(values: valueData, data: dataData), endIndex: endIndex)
+            case .character2Bytes:
+                return (secs2Body: SECS2Body(character2Bytes: valueData, data: dataData), endIndex: endIndex)
                 
             case .int1:
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [Int8] in
                     return Array(ptr.bindMemory(to: Int8.self))
                 }
-                return (secs2Body: SECS2Int1Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(int1: values, data: dataData), endIndex: endIndex)
                 
             case .int2:
                 guard valueData.count % MemoryLayout<Int16>.size == 0 else {
@@ -96,7 +96,7 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [Int16] in
                     return ptr.bindMemory(to: Int16.self).map { $0.bigEndian }
                 }
-                return (secs2Body: SECS2Int2Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(int2: values, data: dataData), endIndex: endIndex)
                 
             case .int4:
                 guard valueData.count % MemoryLayout<Int32>.size == 0 else {
@@ -105,7 +105,7 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [Int32] in
                     return ptr.bindMemory(to: Int32.self).map { $0.bigEndian }
                 }
-                return (secs2Body: SECS2Int4Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(int4: values, data: dataData), endIndex: endIndex)
                 
             case .int8:
                 guard valueData.count % MemoryLayout<Int64>.size == 0 else {
@@ -114,11 +114,11 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [Int64] in
                     return ptr.bindMemory(to: Int64.self).map { $0.bigEndian }
                 }
-                return (secs2Body: SECS2Int8Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(int8: values, data: dataData), endIndex: endIndex)
                 
             case .uint1:
                 let values = [UInt8](valueData)
-                return (secs2Body: SECS2UInt1Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(uint1: values, data: dataData), endIndex: endIndex)
                 
             case .uint2:
                 guard valueData.count % MemoryLayout<UInt16>.size == 0 else {
@@ -127,7 +127,7 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [UInt16] in
                     return ptr.bindMemory(to: UInt16.self).map { $0.bigEndian }
                 }
-                return (secs2Body: SECS2UInt2Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(uint2: values, data: dataData), endIndex: endIndex)
                 
             case .uint4:
                 guard valueData.count % MemoryLayout<UInt32>.size == 0 else {
@@ -136,7 +136,7 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [UInt32] in
                     return ptr.bindMemory(to: UInt32.self).map { $0.bigEndian }
                 }
-                return (secs2Body: SECS2UInt4Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(uint4: values, data: dataData), endIndex: endIndex)
                 
             case .uint8:
                 guard valueData.count % MemoryLayout<UInt64>.size == 0 else {
@@ -145,7 +145,7 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [UInt64] in
                     return ptr.bindMemory(to: UInt64.self).map { $0.bigEndian }
                 }
-                return (secs2Body: SECS2UInt8Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(uint8: values, data: dataData), endIndex: endIndex)
                 
             case .float4:
                 guard valueData.count % MemoryLayout<UInt32>.size == 0 else {
@@ -154,7 +154,7 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [Float] in
                     return ptr.bindMemory(to: UInt32.self).map { $0.bigEndian }.map { Float(bitPattern: $0.littleEndian) }
                 }
-                return (secs2Body: SECS2Float4Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(float4: values, data: dataData), endIndex: endIndex)
                 
             case .float8:
                 guard valueData.count % MemoryLayout<UInt64>.size == 0 else {
@@ -163,10 +163,10 @@ public extension SECS2BodyDecodable {
                 let values = valueData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> [Double] in
                     return ptr.bindMemory(to: UInt64.self).map { $0.bigEndian }.map { Double(bitPattern: $0.littleEndian) }
                 }
-                return (secs2Body: SECS2Float8Body(values: values, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(float8: values, data: dataData), endIndex: endIndex)
                 
             case .unknown:
-                return (secs2Body: SECS2UnknownBody(values: valueData, data: dataData), endIndex: endIndex)
+                return (secs2Body: SECS2Body(unknown: valueData, data: dataData), endIndex: endIndex)
                 
             default:
                 return nil

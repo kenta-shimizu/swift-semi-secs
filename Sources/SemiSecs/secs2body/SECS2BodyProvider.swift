@@ -21,7 +21,7 @@ public enum SECS2BodyItemType: CaseIterable, Sendable {
     /// JIS8, NOT_SUPPORT, "JIS8", 0x45, 0x46, 0x47.
     case jis8
     /// Character-2-bytes, NOT_SUPPORT, "C2", 0x49,. 0x4A, 0x4B
-    case character2bytes
+    case character2Bytes
     /// Signed-Int-1, "I1", 0x65, 0x66, 0x67.
     case int1
     /// Signed-Int-2, "I2", 0x69, 0x6A, 0x6B.
@@ -59,7 +59,7 @@ public enum SECS2BodyItemType: CaseIterable, Sendable {
             return (smlString: "A", itemTypeByte: 0x40, support: true)
         case .jis8:
             return (smlString: "JIS8", itemTypeByte: 0x44, support: false)
-        case .character2bytes:
+        case .character2Bytes:
             return (smlString: "C2", itemTypeByte: 0x48, support: false)
         case .int1:
             return (smlString: "I1", itemTypeByte: 0x64, support: true)
@@ -140,47 +140,117 @@ public protocol SECS2BodyProvider: Equatable, Sequence, CustomStringConvertible,
     /// value
     var value: Any? { get }
     
-    subscript(index: Int) -> Any? { get }
+    subscript(index: Int) -> (any SECS2BodyProvider)? { get }
     
+    /// Returns SECS2Body value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: SECS2Body value if present, otherwise nil
     @discardableResult
     func secs2BodyValue(at: Int, _ indices: Int...) -> (any SECS2BodyProvider)?
     
+    /// Returns Bool value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Bool value if present, otherwise nil
     @discardableResult
     func boolValue(at: Int, _ indices: Int...) -> Bool?
     
+    /// Returns String Bool value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: String value if present, otherwise nil
     @discardableResult
     func stringValue(at: Int...) -> String?
     
+    /// Returns Int8 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Int8 value if present, otherwise nil
     @discardableResult
     func int8Value(at: Int, _ indices: Int...) -> Int8?
     
+    /// Returns Int16 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Int16 value if present, otherwise nil
     @discardableResult
     func int16Value(at: Int, _ indices: Int...) -> Int16?
     
+    /// Returns Int32 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Int32 value if present, otherwise nil
     @discardableResult
     func int32Value(at: Int, _ indices: Int...) -> Int32?
     
+    /// Returns Int64 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Int64 value if present, otherwise nil
     @discardableResult
     func int64Value(at: Int, _ indices: Int...) -> Int64?
     
+    /// Returns UInt8 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: UInt8 value if present, otherwise nil
     @discardableResult
     func uint8Value(at: Int, _ indices: Int...) -> UInt8?
     
+    /// Returns UInt16 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: UInt16 value if present, otherwise nil
     @discardableResult
     func uint16Value(at: Int, _ indices: Int...) -> UInt16?
     
+    /// Returns UInt32 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: UInt32 value if present, otherwise nil
     @discardableResult
     func uint32Value(at: Int, _ indices: Int...) -> UInt32?
     
+    /// Returns UInt64 value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: UInt64 value if present, otherwise nil
     @discardableResult
     func uint64Value(at: Int, _ indices: Int...) -> UInt64?
     
+    /// Returns Float value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Float value if present, otherwise nil
     @discardableResult
     func floatValue(at: Int, _ indices: Int...) -> Float?
     
+    /// Returns Double value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Double value if present, otherwise nil
     @discardableResult
     func doubleValue(at: Int, _ indices: Int...) -> Double?
     
+    /// Returns Any value.
+    ///
+    /// - Parameters:
+    ///   - at: A variadic parameter representing the zero-based indices.
+    /// - Returns: Any value if present, otherwise nil
     @discardableResult
     func anyValue(at: Int...) -> Any?
     
@@ -204,7 +274,7 @@ public extension SECS2BodyProvider {
         return nil
     }
 
-    subscript(index: Int) -> Any? {
+    subscript(index: Int) -> (any SECS2BodyProvider)? {
         return nil
     }
     

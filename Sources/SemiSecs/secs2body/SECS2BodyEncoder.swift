@@ -37,7 +37,7 @@ internal final class SECS2BodyEncoder: Sendable {
         }
     }
     
-    internal func encode(list: [any SECS2BaseBody]) -> Data {
+    internal func encode(list: [any SECS2BodyProvider]) -> Data {
         var data = Self.createHeadData(itemType: .list, count: list.count)
         for value in list {
             data.append(value.data)
