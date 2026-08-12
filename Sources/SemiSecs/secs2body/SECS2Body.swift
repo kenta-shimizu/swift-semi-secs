@@ -9,7 +9,7 @@ import Foundation
 
 public struct SECS2Body: SECS2BodyProvider {
     
-    internal nonisolated(unsafe) let inner: SECS2BodyInnerBase
+    fileprivate nonisolated(unsafe) let inner: SECS2BodyInnerBase
     
     public var count: Int {
         get {
@@ -454,4 +454,542 @@ public struct SECS2Body: SECS2BodyProvider {
         self.inner = SECS2BodyInnerError(error: error)
     }
     
+}
+
+// MARK: Inner
+
+fileprivate class SECS2BodyInnerBase: Sequence {
+    
+    private static let emptyValues: [any SECS2BodyProvider] = []
+    
+    private let _data: Data
+    internal let _secs2BodyItemType: SECS2BodyItemType
+    
+    fileprivate init(data: Data, secs2BodyItemType: SECS2BodyItemType) {
+        self._data = data
+        self._secs2BodyItemType = secs2BodyItemType
+    }
+    
+    fileprivate var data: Data {
+        get {
+            return self._data
+        }
+    }
+    
+    /// SECS-II Item Type
+    fileprivate var type: SECS2BodyItemType {
+        get {
+            return self._secs2BodyItemType
+        }
+    }
+    
+    /// Count Item size
+    fileprivate var count: Int {
+        get {
+            fatalError("SECSBodyInnerBase count")
+        }
+    }
+    
+    fileprivate func smlString(indent: String = "") -> String {
+        let type = self._secs2BodyItemType.smlString
+        let size = self.count
+        let value = self.smlValueString()
+        return "\(indent)<\(type) [\(size)] \(value)>"
+    }
+    
+    fileprivate func smlValueString() -> String {
+        fatalError("SECSBodyInnerBase smlValueString")
+    }
+    
+    /// value
+    fileprivate var value: Any? {
+        get {
+            fatalError("SECSBodyInnerBase value")
+        }
+    }
+    
+    fileprivate func makeIterator() -> IndexingIterator<[any SECS2BodyProvider]> {
+        return Self.emptyValues.makeIterator()
+    }
+    
+    fileprivate func secs2BodyValue(at: Int) -> (any SECS2BodyProvider)? {
+        return nil
+    }
+    
+    fileprivate func boolValue(at: Int) -> Bool? {
+        return nil
+    }
+    
+    fileprivate func stringValue() -> String? {
+        return nil
+    }
+    
+    fileprivate func int8Value(at: Int) -> Int8? {
+        return nil
+    }
+    
+    fileprivate func int16Value(at: Int) -> Int16? {
+        return nil
+    }
+    
+    fileprivate func int32Value(at: Int) -> Int32? {
+        return nil
+    }
+    
+    fileprivate func int64Value(at: Int) -> Int64? {
+        return nil
+    }
+    
+    fileprivate func uint8Value(at: Int) -> UInt8? {
+        return nil
+    }
+    
+    fileprivate func uint16Value(at: Int) -> UInt16? {
+        return nil
+    }
+    
+    fileprivate func uint32Value(at: Int) -> UInt32? {
+        return nil
+    }
+    
+    fileprivate func uint64Value(at: Int) -> UInt64? {
+        return nil
+    }
+    
+    fileprivate func floatValue(at: Int) -> Float? {
+        return nil
+    }
+    
+    fileprivate func doubleValue(at: Int) -> Double? {
+        return nil
+    }
+    
+    fileprivate func anyValue(indices: [Int]) -> Any? {
+        return nil
+    }
+    
+}
+
+fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2BodyInnerBase{
+    
+    fileprivate let _values: [T]
+    
+    fileprivate init(values: [T], data: Data, secs2BodyItemType: SECS2BodyItemType) {
+        self._values = values
+        super.init(data: data, secs2BodyItemType: secs2BodyItemType)
+    }
+    
+    fileprivate override var count: Int {
+        get {
+            return self._values.count
+        }
+    }
+    
+    fileprivate override func smlValueString() -> String {
+        return self._values.map { $0.description + " " }.joined()
+    }
+    
+    fileprivate override var value: Any? {
+        get {
+            return self._values
+        }
+    }
+    
+    fileprivate override func anyValue(indices: [Int]) -> Any? {
+        if indices.count == 0 {
+            return self._values
+        }
+        if indices.count == 1 {
+            let index = indices[0]
+            if self._values.indices.contains(index) {
+                return self._values[index]
+            }
+        }
+        
+        return nil
+    }
+    
+}
+
+fileprivate class SECS2BodyInnerDataBase: SECS2BodyInnerBase{
+    
+    fileprivate let _values: Data
+    
+    fileprivate init(values: Data, data: Data, secs2BodyItemType: SECS2BodyItemType) {
+        self._values = values
+        super.init(data: data, secs2BodyItemType: secs2BodyItemType)
+    }
+    
+    fileprivate override var count: Int {
+        get {
+            return self._values.count
+        }
+    }
+    
+    fileprivate override var value: Any? {
+        get {
+            return self._values
+        }
+    }
+
+}
+
+fileprivate final class SECS2BodyInnerList: SECS2BodyInnerBase {
+    
+    private static let lineSeparator = "\n"
+    private static let indent = "  "
+    
+    private let _values: [any SECS2BodyProvider]
+    
+    fileprivate init(list: [any SECS2BodyProvider], data: Data) {
+        self._values = list
+        super.init(data: data, secs2BodyItemType: .list)
+    }
+    
+    fileprivate override var count: Int {
+        get {
+            return self._values.count
+        }
+    }
+    
+    fileprivate override func smlString(indent: String = "") -> String {
+        let type = self._secs2BodyItemType.smlString
+        let size = self.count
+        var sml = indent
+        sml.append("<\(type) [\(size)]")
+        sml.append(Self.lineSeparator)
+        for provider in self._values {
+            if let body = provider as? SECS2Body {
+                sml.append(body.inner.smlString(indent: indent + Self.indent))
+            } else {
+                sml.append(indent)
+                sml.append(Self.indent)
+                sml.append(provider.smlString)
+            }
+            sml.append(Self.lineSeparator)
+        }
+        sml.append(indent)
+        sml.append(">")
+        return sml
+    }
+    
+    fileprivate override var value: Any? {
+        get {
+            return self._values
+        }
+    }
+    
+    fileprivate override func makeIterator() -> IndexingIterator<[any SECS2BodyProvider]> {
+        return self._values.makeIterator()
+    }
+    
+    fileprivate override func secs2BodyValue(at: Int) -> (any SECS2BodyProvider)? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+    
+    fileprivate override func anyValue(indices: [Int]) -> Any? {
+        if indices.count == 0 {
+            return self._values
+        }
+        if indices.count == 1 {
+            let index = indices[0]
+            if self._values.indices.contains(index) {
+                return self._values[index]
+            }
+        }
+        
+        return nil
+    }
+    
+}
+
+fileprivate final class SECS2BodyInnerBinary: SECS2BodyInnerDataBase {
+    
+    fileprivate init(binary: Data, data: Data) {
+        super.init(values: binary, data: data, secs2BodyItemType: .binary)
+    }
+    
+    fileprivate override func smlValueString() -> String {
+        return self._values.map { String(format: "0x%02X ", $0) }.joined()
+    }
+    
+    fileprivate override func uint8Value(at: Int) -> UInt8? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+    
+    fileprivate override func anyValue(indices: [Int]) -> Any? {
+        if indices.count == 0 {
+            return self._values
+        }
+        if indices.count == 1 {
+            let index = indices[0]
+            if self._values.indices.contains(index) {
+                return self._values[index]
+            }
+        }
+        
+        return nil
+    }
+    
+}
+
+fileprivate final class SECS2BodyInnerBoolean: SECS2BodyInnerArrayBase<Bool> {
+    
+    fileprivate init(boolean: [Bool], data: Data) {
+        super.init(values: boolean, data: data, secs2BodyItemType: .boolean)
+    }
+    
+    fileprivate override func smlValueString() -> String {
+        return self._values.map { $0 ? "TRUE " : "FALSE " }.joined()
+    }
+    
+    fileprivate override func boolValue(at: Int) -> Bool? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+    
+}
+
+fileprivate final class SECS2BodyInnerAscii: SECS2BodyInnerBase {
+    
+    private let _values: String
+    
+    fileprivate init(ascii: String, data: Data) {
+        self._values = ascii
+        super.init(data: data, secs2BodyItemType: .ascii)
+    }
+    
+    fileprivate override var count: Int {
+        get {
+            return self._values.count
+        }
+    }
+    
+    fileprivate override var value: Any? {
+        get {
+            return self._values
+        }
+    }
+    
+    fileprivate override func smlValueString() -> String {
+        return "\"\(self._values)\" "
+    }
+    
+    fileprivate override func stringValue() -> String? {
+        return self._values
+    }
+    
+    fileprivate override func anyValue(indices: [Int]) -> Any? {
+        if indices.count == 0 {
+            return self._values
+        }
+        if indices.count == 1 {
+            let chars = Array(self._values)
+            let index = indices[0]
+            if chars.indices.contains(index) {
+                return chars[index]
+            }
+        }
+        
+        return nil
+    }
+    
+}
+
+fileprivate final class SECS2BodyInnerJis8: SECS2BodyInnerDataBase {
+    
+    fileprivate init(jis8: Data, data: Data) {
+        super.init(values: jis8, data: data, secs2BodyItemType: .jis8)
+    }
+    
+    fileprivate override func smlString(indent: String = "") -> String {
+        let type = self._secs2BodyItemType.smlString
+        return "\(indent)<\(type) [?] >"
+    }
+    
+}
+
+fileprivate final class SECS2BodyInnerCharacter2Bytes: SECS2BodyInnerDataBase {
+    
+    fileprivate init(character2Bytes: Data, data: Data) {
+        super.init(values: character2Bytes, data: data, secs2BodyItemType: .character2Bytes)
+    }
+    
+    fileprivate override func smlString(indent: String = "") -> String {
+        let type = self._secs2BodyItemType.smlString
+        return "\(indent)<\(type) [?] >"
+    }
+    
+}
+
+fileprivate final class SECS2BodyInnerInt1: SECS2BodyInnerArrayBase<Int8> {
+    
+    fileprivate init(int1: [Int8], data: Data) {
+        super.init(values: int1, data: data, secs2BodyItemType: .int1)
+    }
+    
+    fileprivate override func int8Value(at: Int) -> Int8? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerInt2: SECS2BodyInnerArrayBase<Int16> {
+    
+    fileprivate init(int2: [Int16], data: Data) {
+        super.init(values: int2, data: data, secs2BodyItemType: .int2)
+    }
+    
+    fileprivate override func int16Value(at: Int) -> Int16? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerInt4: SECS2BodyInnerArrayBase<Int32> {
+    
+    fileprivate init(int4: [Int32], data: Data) {
+        super.init(values: int4, data: data, secs2BodyItemType: .int4)
+    }
+    
+    fileprivate override func int32Value(at: Int) -> Int32? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerInt8: SECS2BodyInnerArrayBase<Int64> {
+    
+    fileprivate init(int8: [Int64], data: Data) {
+        super.init(values: int8, data: data, secs2BodyItemType: .int8)
+    }
+    
+    fileprivate override func int64Value(at: Int) -> Int64? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerUInt1: SECS2BodyInnerArrayBase<UInt8> {
+    
+    fileprivate init(uint1: [UInt8], data: Data) {
+        super.init(values: uint1, data: data, secs2BodyItemType: .uint1)
+    }
+    
+    fileprivate override func uint8Value(at: Int) -> UInt8? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerUInt2: SECS2BodyInnerArrayBase<UInt16> {
+    
+    fileprivate init(uint2: [UInt16], data: Data) {
+        super.init(values: uint2, data: data, secs2BodyItemType: .uint2)
+    }
+    
+    fileprivate override func uint16Value(at: Int) -> UInt16? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerUInt4: SECS2BodyInnerArrayBase<UInt32> {
+    
+    fileprivate init(uint4: [UInt32], data: Data) {
+        super.init(values: uint4, data: data, secs2BodyItemType: .uint4)
+    }
+    
+    fileprivate override func uint32Value(at: Int) -> UInt32? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerUInt8: SECS2BodyInnerArrayBase<UInt64> {
+    
+    fileprivate init(uint8: [UInt64], data: Data) {
+        super.init(values: uint8, data: data, secs2BodyItemType: .uint8)
+    }
+    
+    fileprivate override func uint64Value(at: Int) -> UInt64? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerFloat4: SECS2BodyInnerArrayBase<Float> {
+    
+    fileprivate init(float4: [Float], data: Data) {
+        super.init(values: float4, data: data, secs2BodyItemType: .float4)
+    }
+    
+    fileprivate override func floatValue(at: Int) -> Float? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerFloat8: SECS2BodyInnerArrayBase<Double> {
+    
+    fileprivate init(float8: [Double], data: Data) {
+        super.init(values: float8, data: data, secs2BodyItemType: .float8)
+    }
+    
+    fileprivate override func doubleValue(at: Int) -> Double? {
+        guard self._values.indices.contains(at) else {
+            return nil
+        }
+        return self._values[at]
+    }
+}
+
+fileprivate final class SECS2BodyInnerUnknown: SECS2BodyInnerDataBase {
+    
+    fileprivate init(unknown: Data, data: Data) {
+        super.init(values: unknown, data: data, secs2BodyItemType: .unknown)
+    }
+    
+    fileprivate override func smlString(indent: String = "") -> String {
+        let type = self._secs2BodyItemType.smlString
+        return "\(indent)<\(type) [?] >"
+    }
+}
+
+fileprivate final class SECS2BodyInnerError: SECS2BodyInnerBase {
+    
+    fileprivate init(error: Data) {
+        super.init(data: error, secs2BodyItemType: .error)
+    }
+    
+    fileprivate override func smlString(indent: String = "") -> String {
+        let type = self._secs2BodyItemType.smlString
+        return "\(indent)<\(type) [?] >"
+    }
 }

@@ -1,5 +1,5 @@
 //
-//  HSMSSSCommunicatorTest.swift
+//  HSMSSSCommunicatorTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/07/06.
@@ -10,7 +10,7 @@ import Foundation
 import Network
 import SemiSecs
 
-struct HSMSSSCommunicatorTest {
+struct HSMSSSCommunicatorTests {
     
     private let testPort: NWEndpoint.Port = 5020
     

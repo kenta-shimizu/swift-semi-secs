@@ -1,5 +1,5 @@
 //
-//  HSMSMessagePipelineTest.swift
+//  HSMSMessagePipelineTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/04/30.
@@ -10,7 +10,7 @@ import Foundation
 import Network
 @testable import SemiSecs
 
-struct HSMSMessagePipelineTest {
+struct HSMSMessagePipelineTests {
     
     private func networkConnection() -> NWConnection {
         let host = NWEndpoint.Host("127.0.0.1")

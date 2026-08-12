@@ -54,19 +54,47 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
         return self.stream
     }
     
+    /// Wait until state changed.
+    ///
+    /// - Parameters:
+    ///   - state: The target state
+    /// - Throws:
+    ///   - CancellationError: throw if cancelled.
     internal func until(_ state: T) async throws {
         try await self.until(predicate: { $0 == state })
     }
     
+    /// Wait until state NOT changed.
+    ///
+    /// - Parameters:
+    ///   - state: The target state
+    /// - Throws:
+    ///   - CancellationError: throw if cancelled.
     internal func untilNot(_ state: T) async throws {
         try await self.until(predicate: { $0 != state })
     }
     
+    /// Wait until state changed with timeout.
+    ///
+    /// - Parameters:
+    ///   - state: The target state
+    ///   - timeout: The timeout duration
+    /// - Returns: true if state changed, false if timeout.
+    /// - Throws:
+    ///   - CancellationError: throw if cancelled.
     @discardableResult
     internal func until(_ state: T, timeout: Duration) async throws -> Bool {
         return try await self.until(predicate: { $0 == state }, timeout: timeout)
     }
     
+    /// Wait until state NOT changed with timeout.
+    ///
+    /// - Parameters:
+    ///   - state: The target state
+    ///   - timeout: The timeout duration
+    /// - Returns: true if state changed, false if timeout.
+    /// - Throws:
+    ///   - CancellationError: throw if cancelled.
     @discardableResult
     internal func untilNot(_ state: T, timeout: Duration) async throws -> Bool {
         return try await self.until(predicate: { $0 != state }, timeout: timeout)

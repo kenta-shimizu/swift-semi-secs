@@ -1,5 +1,5 @@
 //
-//  AsyncStream+Extension.swift
+//  AsyncStream+ExtensionTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/06/21.
@@ -9,7 +9,7 @@ import Testing
 import Foundation
 @testable import SemiSecs
 
-struct AsyncStreamExtensionTest {
+struct AsyncStreamExtensionTests {
 
     @Test func testTakeAndFinish() async throws {
         

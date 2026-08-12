@@ -555,7 +555,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             for await result in stream {
                 switch result {
                 case .success(let pair):
-                    Task {
+                    Task.detached {
                         do {
                             try await self.performPassiveConnection(connection: pair.connection, queue: pair.queue)
                         }

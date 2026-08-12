@@ -11,7 +11,8 @@ internal actor HSMSLinktestTimer {
     
     private var started: Bool
     private var shutdowned: Bool
-    private var timerTask: Task<Void, Never>?
+    
+    private let reset = StateUpdateNotifier<Bool>(state: false)
     
     internal nonisolated(unsafe) var autoLinktest: (() -> Bool)?
     internal nonisolated(unsafe) var linktestDuration: (() -> Duration)?
@@ -20,7 +21,6 @@ internal actor HSMSLinktestTimer {
     internal init() {
         self.started = false
         self.shutdowned = false
-        self.timerTask = nil
         self.autoLinktest = nil
         self.linktestDuration = nil
         self.linktest = nil
@@ -30,39 +30,44 @@ internal actor HSMSLinktestTimer {
         guard self.shutdowned == false else { return }
         guard self.started == false else { return }
         self.started = true
-        self.timerTask = self.newTask()
+        
+        Task.detached {
+            do {
+                while !Task.isCancelled {
+                    await self.reset.yield(false)
+                    guard let funcAutoLinktest = self.autoLinktest else { return }
+                    if funcAutoLinktest() {
+                        guard let funcLinktestDuration = self.linktestDuration else { return }
+                        let result = try await self.reset.until(true, timeout: funcLinktestDuration())
+                        if result == false {
+                            // timeout, do linktest.
+                            self.linktest?()
+                        }
+                    } else {
+                        // wait until reset
+                        try await self.reset.until(true)
+                    }
+                }
+            }
+            catch {
+                // nothing
+            }
+        }
     }
     
     internal func reset() async {
         guard self.shutdowned == false else { return }
         guard self.started == true else { return }
-        self.timerTask?.cancel()
-        self.timerTask = self.newTask()
+        await self.reset.yield(true)
     }
     
     internal func shutdown() async {
         guard self.shutdowned == false else { return }
         self.shutdowned = true
-        self.timerTask?.cancel()
-        self.timerTask = nil
+        await self.reset.shutdown()
         self.autoLinktest = nil
         self.linktestDuration = nil
         self.linktest = nil
-    }
-    
-    private func newTask() -> Task<Void, Never> {
-        return Task {
-            guard self.autoLinktest!() else { return }
-            do {
-                while !Task.isCancelled {
-                    try await Task.sleep(for: self.linktestDuration!())
-                    try Task.checkCancellation()
-                    self.linktest?()
-                }
-            }
-            catch {
-            }
-        }
     }
     
 }
