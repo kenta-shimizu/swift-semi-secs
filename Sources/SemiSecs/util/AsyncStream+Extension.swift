@@ -12,7 +12,7 @@ extension AsyncStream {
     /// Returns value waiting until yield value, othewise nil if cancelled or finished.
     ///
     /// - Returns: The value
-    /// - Throws: CancellationError if finished or cancelled.
+    /// - Throws: `CancellationError`: if finished or cancelled.
     @discardableResult
     internal func take() async throws -> Element {
         var iterator = self.makeAsyncIterator()
@@ -32,7 +32,7 @@ extension AsyncStream where Element: Sendable {
     /// - Parameters:
     ///     - timeout: The timeout
     /// - Returns: The value, otherwise nil if timeout.
-    /// - Throws: CancellationError if finished or cancelled.
+    /// - Throws: `CancellationError`: if finished or cancelled.
     @discardableResult
     internal func poll(timeout: Duration) async throws -> Element? {
         return try await withThrowingTaskGroup(of: Element?.self) { group in

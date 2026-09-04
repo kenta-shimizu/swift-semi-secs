@@ -1,5 +1,5 @@
 //
-//  HSMSSessionTest.swift
+//  HSMSSessionTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/05/04.
@@ -9,7 +9,7 @@ import Testing
 import Foundation
 @testable import SemiSecs
 
-struct HSMSSessionTest {
+struct HSMSSessionTests {
 
     @Test func testSessionId() async throws {
         

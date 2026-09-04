@@ -1,5 +1,5 @@
 //
-//  StateUpdateNotifierTest.swift
+//  StateUpdateNotifierTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/07/03.
@@ -8,7 +8,7 @@
 import Testing
 @testable import SemiSecs
 
-struct StateUpdateNotifierTest {
+struct StateUpdateNotifierTests {
 
     @Test func testStreamAndFinish() async throws {
         

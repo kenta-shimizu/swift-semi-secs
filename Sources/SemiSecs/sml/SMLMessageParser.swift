@@ -49,7 +49,7 @@ public protocol SMLMessageParsable {
     /// - Parameters:
     ///   - of: SMLMessage string
     /// - Returns: parsed SMLMessage
-    /// - Throws: SMLMessageParseError
+    /// - Throws: `SMLMessageParseError`
     @discardableResult
     func parse(_ of: String) throws(SMLMessageParseError) -> SMLMessage
     

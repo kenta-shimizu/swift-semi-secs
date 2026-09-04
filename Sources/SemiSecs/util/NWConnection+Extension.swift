@@ -14,7 +14,7 @@ extension NWConnection {
     ///
     /// - Parameters:
     ///     - queue: the DispatchQueue
-    /// - Throws: CancellationError: if Canceled
+    /// - Throws: `CancellationError`: if Canceled
     internal func connect(queue: DispatchQueue) async throws {
         try await withCheckedThrowingContinuation { continuation in
             let (stateStream, stateContinuation) = AsyncStream.makeStream(of: Result<Void, Error>.self)

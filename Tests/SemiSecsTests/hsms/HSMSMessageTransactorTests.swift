@@ -1,5 +1,5 @@
 //
-//  HSMSMessageTransactorTest.swift
+//  HSMSMessageTransactorTests.swift
 //  swift-semi-secs
 //
 //  Created by kenta-shimizu on 2026/05/01.
@@ -10,7 +10,7 @@ import Foundation
 import Network
 @testable import SemiSecs
 
-struct HSMSMessageTransactorTest {
+struct HSMSMessageTransactorTests {
     
     private func hostMessageBuilder() -> HSMSMessageBuildable {
         let builder = HSMSSSMessageBuilder()

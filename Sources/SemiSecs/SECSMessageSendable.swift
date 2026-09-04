@@ -20,8 +20,8 @@ public protocol SECSMessageSendable {
     ///   - secs2Body: The SECS-II-Body
     /// - Returns: Response message if W-Bit is true, or nil if W-Bit is false.
     /// - Throws:
-    ///   - SECSSendError: if send failed.
-    ///   - SECSWaitReplyError: If receive response failed. (e.g. T3-Timeout)
+    ///   - `SECSSendError`: if send failed.
+    ///   - `SECSWaitReplyError`: If receive response failed. (e.g. T3-Timeout)
     @discardableResult
     func send(stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2BodyProvider)?) async throws -> SECSMessage?
     
@@ -34,8 +34,8 @@ public protocol SECSMessageSendable {
     ///   - smlMessage: The SML Message
     /// - Returns: Response message if W-Bit is true, or nil if W-Bit is false.
     /// - Throws:
-    ///   - SECSSendError: if send failed.
-    ///   - SECSWaitReplyError: If receive response failed. (e.g. T3-Timeout)
+    ///   - `SECSSendError`: if send failed.
+    ///   - `SECSWaitReplyError`: If receive response failed. (e.g. T3-Timeout)
     @discardableResult
     func send(smlMessage: SMLMessage) async throws -> SECSMessage?
     
@@ -48,7 +48,7 @@ public protocol SECSMessageSendable {
     ///   - wbit: The W-Bit
     ///   - secs2Body: The SECS-II-Body
     /// - Throws:
-    ///   - SECSSendError: if send failed.
+    ///   - `SECSSendError`: if send failed.
     func reply(primaryMessage: SECSMessage, stream: UInt8, function: UInt8, wbit: Bool, secs2Body: (any SECS2BodyProvider)?) async throws
     
     /// Reply response SECS message and wait until sended.
@@ -57,7 +57,7 @@ public protocol SECSMessageSendable {
     ///   - primaryMessage: The primary SECS Message
     ///   - smlMessage: The SML Message
     /// - Throws:
-    ///   - SECSSendError: if send failed.
+    ///   - `SECSSendError`: if send failed.
     func reply(primaryMessage: SECSMessage, smlMessage: SMLMessage) async throws
     
 }
