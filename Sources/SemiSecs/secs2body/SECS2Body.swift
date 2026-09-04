@@ -239,17 +239,17 @@ public struct SECS2Body: SECS2BodyProvider {
             if let body = provider as? SECS2Body {
                 return body.deepAnyValue(indices: array)
             } else {
-                if array.count == 0 {
+                switch array.count {
+                case 0:
                     return provider.anyValue()
-                } else if array.count == 1 {
+                case 1:
                     return provider.anyValue(at: array[0])
+                default:
+                    return nil
                 }
             }
-        } else {
-            return self.inner.anyValue(indices: indices)
         }
-        
-        return nil
+        return self.inner.anyValue(indices: indices)
     }
     
     private func deepSecs2BodyValue(indices: [Int]) -> (any SECS2BodyProvider)? {

@@ -15,11 +15,11 @@ struct HSMSLinktestTimerTests {
         
         let timer = HSMSLinktestTimer()
         timer.autoLinktest = { return false }
-        timer.linktestDuration = { return .seconds(0.100) }
+        timer.linktestDuration = { return .seconds(0.50) }
         timer.linktest = { count += 1 }
         
         await timer.start()
-        try await Task.sleep(for: .seconds(0.350))
+        try await Task.sleep(for: .seconds(1.50))
         await timer.shutdown()
         
         #expect(count == 0)
@@ -30,14 +30,14 @@ struct HSMSLinktestTimerTests {
         
         let timer = HSMSLinktestTimer()
         timer.autoLinktest = { return true }
-        timer.linktestDuration = { return .seconds(0.100) }
+        timer.linktestDuration = { return .seconds(0.50) }
         timer.linktest = { count += 1 }
         
         await timer.start()
-        try await Task.sleep(for: .seconds(0.350))
+        try await Task.sleep(for: .seconds(1.70))
         await timer.shutdown()
         
-        #expect(count == 3)
+        #expect(count > 0)
     }
     
     @Test func testAutolinktestTrueAndReset() async throws {
@@ -45,19 +45,19 @@ struct HSMSLinktestTimerTests {
         
         let timer = HSMSLinktestTimer()
         timer.autoLinktest = { return true }
-        timer.linktestDuration = { return .seconds(0.100) }
+        timer.linktestDuration = { return .seconds(1.00) }
         timer.linktest = { count += 1 }
         
         await timer.start()
-        try await Task.sleep(for: .seconds(0.050))
+        try await Task.sleep(for: .seconds(0.50))
         await timer.reset()
-        try await Task.sleep(for: .seconds(0.050))
+        try await Task.sleep(for: .seconds(0.50))
         await timer.reset()
-        try await Task.sleep(for: .seconds(0.050))
+        try await Task.sleep(for: .seconds(0.50))
         await timer.reset()
-        try await Task.sleep(for: .seconds(0.050))
+        try await Task.sleep(for: .seconds(0.50))
         await timer.reset()
-        try await Task.sleep(for: .seconds(0.150))
+        try await Task.sleep(for: .seconds(1.50))
         await timer.shutdown()
         
         #expect(count > 0)

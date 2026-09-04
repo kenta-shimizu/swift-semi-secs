@@ -16,8 +16,8 @@ public protocol HSMSMessageSendable: SECSMessageSendable {
     ///   - message: The HSMS Message
     /// - Returns: Response HSMS Message
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
-    ///   - HSMSWaitReplyError: If receive response failed.
+    ///   - `HSMSSendError`: If send failed.
+    ///   - `HSMSWaitReplyError`: If receive response failed.
     @discardableResult
     func send(message: HSMSMessage) async throws -> HSMSMessage?
     
@@ -25,8 +25,8 @@ public protocol HSMSMessageSendable: SECSMessageSendable {
     ///
     /// - Returns: SELECT.rsp
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
-    ///   - HSMSWaitReplyError: If receive response failed. (e.g. T6-Timeout, Reject)
+    ///   - `HSMSSendError`: If send failed.
+    ///   - `HSMSWaitReplyError`: If receive response failed. (e.g. T6-Timeout, Reject)
     @discardableResult
     func sendSelectRequest() async throws -> HSMSMessage?
     
@@ -35,15 +35,15 @@ public protocol HSMSMessageSendable: SECSMessageSendable {
     ///   - selectRequest: The SELECT.req
     ///   - selectStatus: The SELECT Status
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
+    ///   - `HSMSSendError`: If send failed.
     func replySelectResponse(selectRequest: HSMSMessage, selectStatus: HSMSMessage.SelectStatus) async throws
     
     /// Send DESELECT.req
     ///
     /// - Returns: DESELECT.rsp
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
-    ///   - HSMSWaitReplyError: If receive response failed. (e.g. T6-Timeout, Reject)
+    ///   - `HSMSSendError`: If send failed.
+    ///   - `HSMSWaitReplyError`: If receive response failed. (e.g. T6-Timeout, Reject)
     @discardableResult
     func sendDeselectRequest() async throws -> HSMSMessage?
     
@@ -52,15 +52,15 @@ public protocol HSMSMessageSendable: SECSMessageSendable {
     ///   - deselectRequest: The DESELECT.req
     ///   - deselectStatus: The DESELECT Status
     /// - Throws:
-    ///   - HSMSSendError: If send failed
+    ///   - `HSMSSendError`: If send failed
     func replyDeselectResponse(deselectRequest: HSMSMessage, deselectStatus: HSMSMessage.DeselectStatus) async throws
     
     /// Send LINKTEST.req
     ///
     /// - Returns: LINKTEST.rsp
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
-    ///   - HSMSWaitReplyError: If receive response failed. (e.g. T6-Timeout, Reject)
+    ///   - `HSMSSendError`: If send failed.
+    ///   - `HSMSWaitReplyError`: If receive response failed. (e.g. T6-Timeout, Reject)
     @discardableResult
     func sendLinktestRequest() async throws -> HSMSMessage?
     
@@ -69,7 +69,7 @@ public protocol HSMSMessageSendable: SECSMessageSendable {
     /// - Parameters:
     ///   - linktestRequest: The LINKTEST.req
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
+    ///   - `HSMSSendError`: If send failed.
     func replyLinktestResponse(linktestRequest: HSMSMessage) async throws
     
     /// Reply REJECT.req
@@ -79,13 +79,13 @@ public protocol HSMSMessageSendable: SECSMessageSendable {
     ///   - rejectReason: The reject reason code
     ///   - byte2: P or S type number
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
+    ///   - `HSMSSendError`: If send failed.
     func replyRejectRequest(referenceMessage: HSMSMessage, rejectReason: HSMSMessage.RejectReason, byte2: UInt8) async throws
     
     /// Send SEPARATE.req
     ///
     /// - Throws:
-    ///   - HSMSSendError: If send failed.
+    ///   - `HSMSSendError`: If send failed.
     func sendSeparateRequest() async throws
     
 }

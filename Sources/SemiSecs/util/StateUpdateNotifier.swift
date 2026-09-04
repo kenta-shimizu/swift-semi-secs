@@ -59,7 +59,7 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     /// - Parameters:
     ///   - state: The target state
     /// - Throws:
-    ///   - CancellationError: throw if cancelled.
+    ///   - `CancellationError`: throw if cancelled.
     internal func until(_ state: T) async throws {
         try await self.until(predicate: { $0 == state })
     }
@@ -69,7 +69,7 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     /// - Parameters:
     ///   - state: The target state
     /// - Throws:
-    ///   - CancellationError: throw if cancelled.
+    ///   - `CancellationError`: throw if cancelled.
     internal func untilNot(_ state: T) async throws {
         try await self.until(predicate: { $0 != state })
     }
@@ -81,7 +81,7 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     ///   - timeout: The timeout duration
     /// - Returns: true if state changed, false if timeout.
     /// - Throws:
-    ///   - CancellationError: throw if cancelled.
+    ///   - `CancellationError`: throw if cancelled.
     @discardableResult
     internal func until(_ state: T, timeout: Duration) async throws -> Bool {
         return try await self.until(predicate: { $0 == state }, timeout: timeout)
@@ -94,7 +94,7 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     ///   - timeout: The timeout duration
     /// - Returns: true if state changed, false if timeout.
     /// - Throws:
-    ///   - CancellationError: throw if cancelled.
+    ///   - `CancellationError`: throw if cancelled.
     @discardableResult
     internal func untilNot(_ state: T, timeout: Duration) async throws -> Bool {
         return try await self.until(predicate: { $0 != state }, timeout: timeout)

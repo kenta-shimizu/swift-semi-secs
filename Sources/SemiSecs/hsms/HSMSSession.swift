@@ -68,6 +68,7 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     
     // MARK: - let
     
+    public let gem = GEM()
     internal let connectionAndState = NWConnectionAndHSMSConnectionState()
     private let communicatableNotifier = StateUpdateNotifier<Bool>(state: false)
     internal let (receiveHSMSMessageStream, receiveHSMSMessageCotinuation) = AsyncStream.makeStream(of: HSMSMessage.self)
@@ -75,6 +76,7 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     // MARK: - var
     
     internal nonisolated(unsafe) var hsmsSessionId: (() -> UInt16)?
+    internal nonisolated(unsafe) var isEquipment: (() -> Bool)?
     internal nonisolated(unsafe) var hsmsMessageBuilder: (() -> HSMSMessageBuildable)?
     internal nonisolated(unsafe) var hsmsMessageTransactor: (() -> HSMSMessageTransactor)?
     
@@ -90,6 +92,15 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
         self.hsmsMessageBuilder = nil
         self.hsmsMessageTransactor = nil
         self.hsmsSessionId = nil
+        self.isEquipment = nil
+        
+        self.gem.communicator = self
+        self.gem.deviceId = { [weak self] in
+            return self!.hsmsSessionId!()
+        }
+        self.gem.isEquipment = { [weak self] in
+            return self!.isEquipment!()
+        }
         
         self._didUpdateHSMSConnectionState = nil
         self._didUpdateCommunicationState = nil
@@ -127,7 +138,6 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     internal func shutdown() async {
         self.hsmsMessageBuilder = nil
         self.hsmsMessageTransactor = nil
-        self.hsmsSessionId = nil
         self._didUpdateHSMSConnectionState = nil
         self._didUpdateCommunicationState = nil
         self._didReceivePrimaryDataSECSMessage = nil

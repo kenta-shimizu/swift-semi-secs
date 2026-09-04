@@ -210,8 +210,8 @@ internal final class StartAndShutdown: Sendable {
     /// Mark start, throws if already started or shutdown.
     ///
     /// - Throws:
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdown.
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
+    ///   - `SECSCommunicatorStartAndShutdownError.alreadyShutdowned`: if already shutdown.
+    ///   - `SECSCommunicatorStartAndShutdownError.alreadyStarted`:  if already started.
     internal func start() throws {
         try lockQueue.sync {
             guard self.shutdowned == false else {

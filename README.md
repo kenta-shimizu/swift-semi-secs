@@ -30,38 +30,38 @@ import SemiSecs
 ### HSMS-SS Active
 
 ```swift
-let active = HSMSSSCommunicator()
-active.config.connectionMode   = .active
-active.config.ipAddress        = "127.0.0.1"
-active.config.port             = 5000
-active.config.isEquipment      = false
-active.config.sessionId        = 10
-active.config.timeout.t3       = .seconds(45.0)
-active.config.timeout.t5       = .seconds(10.0)
-active.config.timeout.t6       = .seconds( 5.0)
-active.config.timeout.t8       = .seconds( 6.0)
-active.config.autoLinktest     = true
-active.config.linktestDuration = .seconds(120.0)
+let host = HSMSSSCommunicator()
+host.config.connectionMode   = .active
+host.config.ipAddress        = "127.0.0.1"
+host.config.port             = 5000
+host.config.isEquipment      = false
+host.config.sessionId        = 10
+host.config.timeout.t3       = .seconds(45.0)
+host.config.timeout.t5       = .seconds(10.0)
+host.config.timeout.t6       = .seconds( 5.0)
+host.config.timeout.t8       = .seconds( 6.0)
+host.config.autoLinktest     = true
+host.config.linktestDuration = .seconds(120.0)
 
-try active.start()
+try host.start()
 ```
 
 ### HSMS-SS Passive
 
 ```swift
-let passive = HSMSSSCommunicator()
-passive.config.connectionMode = .passive
-passive.config.port           = 5000
-passive.config.isEquipment    = true
-passive.config.sessionId      = 10
-passive.config.timeout.t3     = .seconds(45.0)
-passive.config.timeout.t6     = .seconds( 5.0)
-passive.config.timeout.t7     = .seconds(10.0)
-passive.config.timeout.t8     = .seconds( 6.0)
-passive.config.autoLinktest   = false
-passive.config.rebindDuration = .seconds(10.0)
+let equip = HSMSSSCommunicator()
+equip.config.connectionMode = .passive
+equip.config.port           = 5000
+equip.config.isEquipment    = true
+equip.config.sessionId      = 10
+equip.config.timeout.t3     = .seconds(45.0)
+equip.config.timeout.t6     = .seconds( 5.0)
+equip.config.timeout.t7     = .seconds(10.0)
+equip.config.timeout.t8     = .seconds( 6.0)
+equip.config.autoLinktest   = false
+equip.config.rebindDuration = .seconds(10.0)
 
-try passive.start()
+try equip.start()
 ```
 
 ### Shutdown
@@ -69,7 +69,7 @@ try passive.start()
 Cancel communication. Release all resources. Cannot be restarted after shutdown.
 
 ```swift
-active.shutdown()
+host.shutdown()
 ```
 
 ## Send primary-message and await response-message.
@@ -88,7 +88,7 @@ SECS2Body(list: [                       // <L
 2. Send message
 
 ```swift
-let response = try await passive.send(
+let response = try await equip.send(
     stream:    5,           // Stream-Number
     function:  1,           // Function-Number
     wbit:      true,        // W-Bit
@@ -118,7 +118,7 @@ if let response = response {
 1. Set handler
 
 ```swift
-active.didReceivePrimaryDataSECSMessage = { primaryMessage in
+host.didReceivePrimaryDataSECSMessage = { primaryMessage in
     let stream    = primaryMessage.stream       // Stream-Number
     let function  = primaryMessage.function     // Function-Number
     let wbit      = primaryMessage.wbit         // W-Bit
@@ -165,7 +165,7 @@ if let secs2Body = primaryMessage.secs2Body {
 3. Reply message
 
 ```swift
-try await active.reply(
+try await host.reply(
     primaryMessage: primaryMessage,
     stream:         5,
     function:       2,
@@ -179,7 +179,7 @@ try await active.reply(
 ### Set handler
 
 ```swift
-active.didUpdateCommunicationState = { communicating in
+host.didUpdateCommunicationState = { communicating in
     print("communicating is \(communicating)")
 }
 ```
@@ -187,7 +187,7 @@ active.didUpdateCommunicationState = { communicating in
 ### Wait until communicating
 
 ```swift
-try await active.untilCommunicating()
+try await host.untilCommunicating()
 ```
 
 ## SML
@@ -205,7 +205,7 @@ let smlMessageString = """
 """
 
 if let smlMessage = try? SMLMessageParser.shared.parse(smlMessageString) {
-    let response = try await passive.send(smlMessage: smlMessage)
+    let response = try await equip.send(smlMessage: smlMessage)
 }
 ```
 
@@ -213,7 +213,7 @@ if let smlMessage = try? SMLMessageParser.shared.parse(smlMessageString) {
 
 ```swift
 if let smlMessage = try? SMLMessageParser.shared.parse("S5F2 <B 0x00>.") {
-    try await active.reply(
+    try await host.reply(
         primaryMessage: primaryMessage,
         smlMessage:     smlMessage
     )
@@ -222,4 +222,155 @@ if let smlMessage = try? SMLMessageParser.shared.parse("S5F2 <B 0x00>.") {
 
 ## GEM
 
-Under construction...
+### Establish Communications
+
+```swift
+// Equipment receive S1F13 and reply S1F14
+equip.didReceivePrimaryDataSECSMessage = { primaryMessage in
+    Task {
+        if primaryMessage.stream == 1 &&
+            primaryMessage.function == 13 &&
+            primaryMessage.wbit {
+            
+            do {
+                // reply S1F14
+                try await equip.gem.s1f14(
+                    primaryMessage: primaryMessage,
+                    commack: .accepted,
+                    mdln: "MDLN-A",
+                    softrev: "000001")
+                    
+            }
+            catch {
+                // error
+            }
+        }
+    }
+}
+
+// Host send S1F13 and receive S1F14 COMMACK
+let commack: GEM.COMMACK = try await host.gem.s1f13()
+```
+
+### Control State
+
+```swift
+// Equipment receive primary-message and reply message.
+equip.didReceivePrimaryDataSECSMessage = { primaryMessage in
+    Task {
+        do {
+            switch primaryMessage.stream {
+            case 1:
+                switch primaryMessage.function {
+                case 1:
+                    if primaryMessage.wbit {
+                        // reply S1F2
+                        try await equip.gem.s1f2(
+                            primaryMessage: primaryMessage,
+                            mdln: "MDLN-A",
+                            softrev: "000001")
+                    }
+                case 15:
+                    if primaryMessage.wbit {
+                        // reply S1F16
+                        try await equip.gem.s1f16(
+                            primaryMessage: primaryMessage,
+                            oflack: .acknowledge)
+                    }
+                case 17:
+                    if primaryMessage.wbit {
+                        // reply S1F18
+                        try await equip.gem.s1f18(
+                            primaryMessage: primaryMessage,
+                            onlack: .accepted)
+                    }
+                default:
+                    break
+                }
+            default:
+                break
+            }
+        }
+        catch {
+            // error
+        }
+    }
+}
+
+// Host send message and await response
+let onlack: GEM.ONLACK = try await host.gem.s1f17()
+let s1f2 = try await host.gem.s1f1()
+let oflack: GEM.OFLACK = try await host.gem.s1f15()
+```
+
+### Clock
+
+```swift
+// Host receive S2F17 and reply S2F18
+host.didReceivePrimaryDataSECSMessage = { primaryMessage in
+    Task {
+        if primaryMessage.stream == 2 &&
+            primaryMessage.function == 17 &&
+            primaryMessage.wbit {
+            
+            do {
+                // reply S2F18
+                try await host.gem.s2f18Now(
+                    primaryMessage: primaryMessage,
+                    clockType: .a16)
+            }
+            catch {
+                // error
+            }
+        }
+    }
+}
+
+// Equipment send S2F17 and receive S2F18 Date
+let date: Date = try await equip.gem.s2f17()
+```
+
+```swift
+// Equipment receive S2F31 and reply S2F32
+equip.didReceivePrimaryDataSECSMessage = { primaryMessage in
+    Task {
+        if primaryMessage.stream == 2 &&
+            primaryMessage.function == 31 &&
+            primaryMessage.wbit {
+            
+            do {
+                // parse from String to Date
+                guard let string = primaryMessage.secs2Body?.stringValue(),
+                      let date: Date = GEM.Clock.date(from: string) else {
+                    try await equip.gem.s2f32(
+                        primaryMessage: primaryMessage,
+                        tiack: .notAccepted)
+                    return
+                }
+                
+                // reply S2F32
+                try await equip.gem.s2f32(
+                    primaryMessage: primaryMessage,
+                    tiack: .ok)
+            }
+            catch {
+                // error
+            }
+        }
+    }
+}
+
+// Host send S2F31 and receive S2F32 TIACK
+let tiack: GEM.TIACK = try await host.gem.s2f31Now(clockType: .a16)
+```
+
+### System Errors
+
+```swift
+try await equip.gem.s9f1(referenceMessage: primaryMessage)
+try await equip.gem.s9f3(referenceMessage: primaryMessage)
+try await equip.gem.s9f5(referenceMessage: primaryMessage)
+try await equip.gem.s9f7(referenceMessage: primaryMessage)
+try await equip.gem.s9f9(referenceMessage: message)
+try await equip.gem.s9f11(referenceMessage: message)
+```

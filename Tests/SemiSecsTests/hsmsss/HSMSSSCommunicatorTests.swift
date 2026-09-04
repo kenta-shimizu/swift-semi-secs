@@ -28,6 +28,48 @@ struct HSMSSSCommunicatorTests {
         communicator.config.autoLinktest = true
         communicator.config.linktestDuration = .seconds(120.0)
         
+        communicator.didReceivePrimaryDataSECSMessage = { message in
+            Task {
+                do {
+                    switch message.stream {
+                    case 1:
+                        switch message.function {
+                        case 1:
+                            if message.wbit {
+                                try await communicator.gem.s1f2(primaryMessage: message)
+                            }
+                        case 13:
+                            if message.wbit {
+                                try await communicator.gem.s1f14(primaryMessage: message, commack: .accepted)
+                            }
+                        default:
+                            if message.wbit {
+                                try await communicator.reply(primaryMessage: message, stream: message.stream, function: 0, wbit: false)
+                            }
+                        }
+                    case 2:
+                        switch message.function {
+                        case 17:
+                            if message.wbit {
+                                try await communicator.gem.s2f18Now(primaryMessage: message, clockType: .a16)
+                            }
+                        default:
+                            if message.wbit {
+                                try await communicator.reply(primaryMessage: message, stream: message.stream, function: 0, wbit: false)
+                            }
+                        }
+                    default:
+                        if message.wbit {
+                            try await communicator.reply(primaryMessage: message, stream: 0, function: 0, wbit: false)
+                        }
+                    }
+                }
+                catch {
+                    print(error)
+                }
+            }
+        }
+
         return communicator
     }
     
@@ -51,18 +93,60 @@ struct HSMSSSCommunicatorTests {
                     case 1:
                         switch message.function {
                         case 1:
-                            let smlMessage = try SMLMessageParser.shared.parse("S1F2 <L>.")
-                            try await communicator.reply(primaryMessage: message, smlMessage: smlMessage)
+                            try await communicator.gem.s1f2(primaryMessage: message, mdln: "MDLN-A", softrev: "000001")
                         case 13:
-                            let smlMessage = try SMLMessageParser.shared.parse("S1F14 <L <L>>.")
-                            try await communicator.reply(primaryMessage: message, smlMessage: smlMessage)
+                            if message.wbit {
+                                try await communicator.gem.s1f14(primaryMessage: message, commack: .accepted, mdln: "MDLN-A", softrev: "000001")
+                            }
+                        case 15:
+                            if message.wbit {
+                                try await communicator.gem.s1f16(primaryMessage: message, oflack: .acknowledge)
+                            }
+                        case 17:
+                            if message.wbit {
+                                try await communicator.gem.s1f18(primaryMessage: message, onlack: .accepted)
+                            }
                         default:
-                            try await communicator.reply(primaryMessage: message, stream: message.stream, function: 0, wbit: false)
+                            if message.wbit {
+                                try await communicator.reply(primaryMessage: message, stream: message.stream, function: 0, wbit: false)
+                            }
+                            
+                            try await communicator.gem.s9f5(referenceMessage: message)
+                        }
+                    case 2:
+                        switch message.function {
+                        case 31:
+                            if message.wbit {
+                                guard let string = message.secs2Body?.stringValue(),
+                                      let date: Date = GEM.Clock.date(from: string) else {
+                                    try
+                                    await communicator.gem.s2f32(primaryMessage: message, tiack: .notAccepted)
+                                    return
+                                }
+                                
+                                let formatter = DateFormatter()
+                                formatter.locale = Locale.current
+                                formatter.timeZone = TimeZone.current
+                                formatter.dateFormat = "yyyy/MM/dd HH:mm:ss"
+                                let dateString = formatter.string(from: date)
+                                print("S2F31: \(dateString)")
+
+                                try
+                                await communicator.gem.s2f32(primaryMessage: message, tiack: .ok)
+                            }
+                        default:
+                            if message.wbit {
+                                try await communicator.reply(primaryMessage: message, stream: message.stream, function: 0, wbit: false)
+                            }
+                            
+                            try await communicator.gem.s9f5(referenceMessage: message)
                         }
                     default:
                         if message.wbit {
                             try await communicator.reply(primaryMessage: message, stream: 0, function: 0, wbit: false)
                         }
+                        
+                        try await communicator.gem.s9f3(referenceMessage: message)
                     }
                 }
                 catch {
@@ -91,74 +175,49 @@ struct HSMSSSCommunicatorTests {
         try await Task.sleep(for: .seconds(0.5))
         try active.start()
         
-//        let builder = SECS2BodyBuilder.shared
-//        let secs2body =
-//        builder.build(list: [
-//            builder.build(binary: Data([0x81])),
-//            builder.build(uint2:  [1001]),
-//            builder.build(ascii:  "ON FIRE")
-//        ])
-//        
-//        let response = try await passive.send(
-//            stream: 5,
-//            function: 1,
-//            wbit: true,
-//            secs2Body: secs2body)
-//        
-//        active.didReceivePrimaryDataSECSMessage = { primaryMessage in
-//            let stream = primaryMessage.stream
-//            let function = primaryMessage.function
-//            let wbit = primaryMessage.wbit
-//            
-//            if let secs2Body = primaryMessage.secs2Body {
-//                let alid: UInt8?  = secs2Body.uint8Value(at: 0, 0)
-//                let alcd: UInt16? = secs2Body.uint16Value(at: 1, 0)
-//                let altx: String? = secs2Body.stringValue(at: 2)
-//            }
-//            
-//            try await active.reply(
-//                primaryMessage: primaryMessage,
-//                stream: 5,
-//                function: 2,
-//                wbit: false,
-//                secs2Body: SECS2BodyBuilder.shared.build(binary: Data([0x00]))
-//            )
-//        }
-//
-//        if let response = response {
-//            let stream   = response.stream
-//            let function = response.function
-//            let wbit     = response.wbit
-//            if let secs2body = response.secs2Body {
-//                ...
-//            }
-//        }
-        
         guard try await active.untilCommunicating(timeout: .seconds(5.0)) else {
             Issue.record("communicatable timeout")
             return
         }
         
-        if let s1f2 = try await active.send(stream: 1, function: 1, wbit: true) {
-            #expect(s1f2.stream == 1)
-            #expect(s1f2.function == 2)
-            #expect(s1f2.wbit == false)
-        } else {
-            Issue.record("Send S1F1")
+        try await Task.sleep(for: .seconds(0.2))
+        
+        let commack = try await active.gem.s1f13()
+        guard commack == .accepted else {
+            Issue.record("COMMACK: \(commack)")
+            return
         }
         
-        if let s1f14 = try await active.send(stream: 1, function: 13, wbit: true) {
-            #expect(s1f14.stream == 1)
-            #expect(s1f14.function == 14)
-            #expect(s1f14.wbit == false)
-        } else {
-            Issue.record("Send S1F13")
+        try await Task.sleep(for: .seconds(0.2))
+        
+        let onlack = try await active.gem.s1f17()
+        guard onlack == .accepted else {
+            Issue.record("ONLACK: \(onlack)")
+            return
         }
         
+        try await active.gem.s2f31Now(clockType: .a16)
+        
+        let date = try await passive.gem.s2f17()
+        
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "yyyy/MM/dd HH:mm:ss"
+        let dateString = formatter.string(from: date)
+        print("S2F18: \(dateString)")
+
         let s5f1 = try SMLMessageParser.shared.parse("S5F1 <L <B 0x81><U2 1001><A \"ON FIRE\">>.")
         try await passive.send(smlMessage: s5f1)
         
         try await Task.sleep(for: .seconds(10.0))
+        
+        let oflack = try await active.gem.s1f15()
+        guard oflack == .acknowledge else {
+            Issue.record("OFLACK: \(oflack)")
+            return
+        }
+        
         active.shutdown()
         try await Task.sleep(for: .seconds(1.0))
         passive.shutdown()

@@ -142,7 +142,15 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     private nonisolated(unsafe) var _didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
     
+    /// Config
     public nonisolated(unsafe) var config = HSMSSSCommunicatorConfig()
+    
+    /// GEM
+    public var gem: GEM {
+        get {
+            return self.session.gem
+        }
+    }
     
     /// Create HSMS-SS communicator instance.
     public init() {
@@ -162,6 +170,9 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         // session
         self.session.hsmsSessionId = { [weak self] in
             return self!.config.sessionId
+        }
+        self.session.isEquipment = { [weak self] in
+            return self!.config.isEquipment
         }
         self.session.hsmsMessageBuilder = { [weak self] in
             return self!.messageBuilder
@@ -191,8 +202,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     /// - Parameters:
     ///   - queue: the DispatchQueue
     /// - Throws:
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdown.
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
+    ///   - `SECSCommunicatorStartAndShutdownError.alreadyShutdowned`: if already shutdown.
+    ///   - `SECSCommunicatorStartAndShutdownError.alreadyStarted`:  if already started.
     public func start(queue: DispatchQueue) throws {
         try self.startAndShutdown.start()
         
@@ -220,7 +231,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         
         // receive Primary-HSMS-Message and NWConnection pair pass to HSMSSession
         Task { [weak self] in
-            guard let self = self else { return  }
+            guard let self = self else { return }
             let stream = await self.transactor.didReceiveMessageStream()
             for await pair in stream {
                 switch self.config.connectionMode {
