@@ -112,11 +112,11 @@ public protocol HSMSCommunicatorConfig: SECSCommunicatorConfig {
     /// HSMS connection mode.
     var connectionMode: HSMSConnectionMode { get set }
     
-    /// TCP/IP IP Address, connect or bind.
-    var ipAddress: NWEndpoint.Host? { get set }
+    /// TCP/IP IP Address, connect.
+    var ipAddress: String { get set }
     
     /// TCP/IP Port, connect or bind
-    var port: NWEndpoint.Port { get set }
+    var port: UInt16 { get set }
     
     /// passive rebind time interval.
     var rebindDuration: Duration { get set }
