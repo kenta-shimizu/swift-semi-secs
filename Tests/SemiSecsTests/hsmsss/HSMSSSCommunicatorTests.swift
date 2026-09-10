@@ -12,7 +12,7 @@ import SemiSecs
 
 struct HSMSSSCommunicatorTests {
     
-    private let testPort: NWEndpoint.Port = 5020
+    private let testPort: UInt16 = 5020
     
     private func activeCommunicator() -> HSMSSSCommunicator {
         let communicator = HSMSSSCommunicator()
@@ -182,7 +182,7 @@ struct HSMSSSCommunicatorTests {
         
         try await Task.sleep(for: .seconds(0.2))
         
-        let commack = try await active.gem.s1f13()
+        let (commack, _, _) = try await active.gem.s1f13()
         guard commack == .accepted else {
             Issue.record("COMMACK: \(commack)")
             return
@@ -196,6 +196,8 @@ struct HSMSSSCommunicatorTests {
             return
         }
         
+        let (_, _) = try await active.gem.s1f1()
+        
         try await active.gem.s2f31Now(clockType: .a16)
         
         let date = try await passive.gem.s2f17()
@@ -206,7 +208,7 @@ struct HSMSSSCommunicatorTests {
         formatter.dateFormat = "yyyy/MM/dd HH:mm:ss"
         let dateString = formatter.string(from: date)
         print("S2F18: \(dateString)")
-
+        
         let s5f1 = try SMLMessageParser.shared.parse("S5F1 <L <B 0x81><U2 1001><A \"ON FIRE\">>.")
         try await passive.send(smlMessage: s5f1)
         

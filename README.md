@@ -8,8 +8,9 @@ This package is SEMI-SECS communication implementation on Swift6.
 
 ## Supports
 
-- SECS-II (E5)
-- HSMS-SS (E37.1)
+- SECS-II (SEMI-E5)
+- GEM (SEMI-E30, partially)
+- HSMS-SS (SEMI-E37.1)
 - [SML (PEER Group)](https://www.peergroup.com/expertise/resources/secs-message-language/)
 
 ## Setup
@@ -30,6 +31,7 @@ import SemiSecs
 ### HSMS-SS Active
 
 ```swift
+// Host communicator instance
 let host = HSMSSSCommunicator()
 host.config.connectionMode   = .active
 host.config.ipAddress        = "127.0.0.1"
@@ -43,12 +45,14 @@ host.config.timeout.t8       = .seconds( 6.0)
 host.config.autoLinktest     = true
 host.config.linktestDuration = .seconds(120.0)
 
+// start
 try host.start()
 ```
 
 ### HSMS-SS Passive
 
 ```swift
+// Equipment communicator instance
 let equip = HSMSSSCommunicator()
 equip.config.connectionMode = .passive
 equip.config.port           = 5000
@@ -61,6 +65,7 @@ equip.config.timeout.t8     = .seconds( 6.0)
 equip.config.autoLinktest   = false
 equip.config.rebindDuration = .seconds(10.0)
 
+// start
 try equip.start()
 ```
 
@@ -69,6 +74,7 @@ try equip.start()
 Cancel communication. Release all resources. Cannot be restarted after shutdown.
 
 ```swift
+// shutdown
 host.shutdown()
 ```
 
@@ -88,6 +94,7 @@ SECS2Body(list: [                       // <L
 2. Send message
 
 ```swift
+// send S5F1 and await response-message
 let response = try await equip.send(
     stream:    5,           // Stream-Number
     function:  1,           // Function-Number
@@ -129,14 +136,15 @@ host.didReceivePrimaryDataSECSMessage = { primaryMessage in
 2. Parse SECS-II
 
 ```swift
-/* example receive message */
-S5F1 W
-<L [3]
-    <B  [1] 0x81>       // ALCD (0, 0)
-    <U4 [1] 1001>       // ALID (1, 0)
-    <A  "ON FIRE">      // ALTX (2)
->. 
+// example receive message
+// S5F1 W
+// <L [3]
+//     <B  [1] 0x81>       // ALCD (0, 0)
+//     <U4 [1] 1001>       // ALID (1, 0)
+//     <A  "ON FIRE">      // ALTX (2)
+// >. 
 
+// send S5F1 and await response-message
 if let secs2Body = primaryMessage.secs2Body {
     let alcd: UInt8?  = secs2Body.uint8Value(at: 0, 0)
     let alid: UInt32? = secs2Body.uint32Value(at: 1, 0)
@@ -165,6 +173,7 @@ if let secs2Body = primaryMessage.secs2Body {
 3. Reply message
 
 ```swift
+// reply S5F2
 try await host.reply(
     primaryMessage: primaryMessage,
     stream:         5,
@@ -205,6 +214,7 @@ let smlMessageString = """
 """
 
 if let smlMessage = try? SMLMessageParser.shared.parse(smlMessageString) {
+    // send S5F1 and await response-message
     let response = try await equip.send(smlMessage: smlMessage)
 }
 ```
@@ -213,6 +223,7 @@ if let smlMessage = try? SMLMessageParser.shared.parse(smlMessageString) {
 
 ```swift
 if let smlMessage = try? SMLMessageParser.shared.parse("S5F2 <B 0x00>.") {
+    // reply S5F2
     try await host.reply(
         primaryMessage: primaryMessage,
         smlMessage:     smlMessage
@@ -367,10 +378,10 @@ let tiack: GEM.TIACK = try await host.gem.s2f31Now(clockType: .a16)
 ### System Errors
 
 ```swift
-try await equip.gem.s9f1(referenceMessage: primaryMessage)
-try await equip.gem.s9f3(referenceMessage: primaryMessage)
-try await equip.gem.s9f5(referenceMessage: primaryMessage)
-try await equip.gem.s9f7(referenceMessage: primaryMessage)
+try await equip.gem.s9f1(referenceMessage: message)
+try await equip.gem.s9f3(referenceMessage: message)
+try await equip.gem.s9f5(referenceMessage: message)
+try await equip.gem.s9f7(referenceMessage: message)
 try await equip.gem.s9f9(referenceMessage: message)
 try await equip.gem.s9f11(referenceMessage: message)
 ```

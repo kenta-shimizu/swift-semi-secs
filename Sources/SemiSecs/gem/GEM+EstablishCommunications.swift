@@ -62,13 +62,16 @@ extension GEM {
     /// >.
     /// ```
     ///
-    /// - Returns: COMMACK
+    /// - Returns: S1F14  value
+    ///   - commack: COMMACK
+    ///   - mdln: MDLN
+    ///   - softrev: SOFTREV
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     ///   - `SECSWaitReplyError`: if wait reply failed.
     ///   - `GEMError`: if unexpected response.
     @discardableResult
-    public func s1f13() async throws -> COMMACK {
+    public func s1f13() async throws -> (commack: COMMACK, mdln: String?, softrev: String?) {
         return try await self.s1f13Inner(secs2Body: SECS2Body(list: []))
     }
     
@@ -87,27 +90,32 @@ extension GEM {
     /// - Parameters:
     ///   - mdln: MDLN
     ///   - softrev: SOFTREV
-    /// - Returns: COMMACK
+    /// - Returns: S1F14  value
+    ///   - commack: COMMACK
+    ///   - mdln: MDLN
+    ///   - softrev: SOFTREV
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     ///   - `SECSWaitReplyError`: if wait reply failed.
     ///   - `GEMError`: if unexpected response.
     @discardableResult
-    public func s1f13(mdln: String, softrev: String) async throws -> COMMACK {
+    public func s1f13(mdln: String, softrev: String) async throws -> (commack: COMMACK, mdln: String?, softrev: String?) {
         return try await self.s1f13Inner(secs2Body: self.mdlnSoftrev(mdln: mdln, softrev: softrev))
     }
     
-    private func s1f13Inner(secs2Body: SECS2Body) async throws -> COMMACK {
+    private func s1f13Inner(secs2Body: SECS2Body) async throws -> (commack: COMMACK, mdln: String?, softrev: String?) {
         guard let s1f14 = try await self.communicator?.send(stream: 1, function: 13, wbit: true) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s1f14, stream: 1, function: 14)
-        guard let byte = s1f14.secs2Body?.uint8Value(at: 0, 0),
-              let result = COMMACK(byte: byte) else {
+        guard let byte0 = s1f14.secs2Body?.uint8Value(at: 0, 0),
+              let commack = COMMACK(byte: byte0),
+              let mdlnAndSoftrev = s1f14.secs2Body?.secs2BodyValue(at: 1),
+              mdlnAndSoftrev.type == .list else {
             throw GEMError.illegalData(responseMesage: s1f14)
         }
         
-        return result
+        return (commack: commack, mdln: mdlnAndSoftrev.stringValue(at: 0), softrev: mdlnAndSoftrev.stringValue(at: 1))
     }
     
     /// S1F14 Establish Communications Acknowledge
