@@ -260,7 +260,7 @@ equip.didReceivePrimaryDataSECSMessage = { primaryMessage in
 }
 
 // Host send S1F13 and receive S1F14 COMMACK
-let commack: GEM.COMMACK = try await host.gem.s1f13()
+let (commack, mdln, softrev) = try await host.gem.s1f13()
 ```
 
 ### Control State
@@ -310,7 +310,7 @@ equip.didReceivePrimaryDataSECSMessage = { primaryMessage in
 
 // Host send message and await response
 let onlack: GEM.ONLACK = try await host.gem.s1f17()
-let s1f2 = try await host.gem.s1f1()
+let (mdln, softrev) = try await host.gem.s1f1()
 let oflack: GEM.OFLACK = try await host.gem.s1f15()
 ```
 
