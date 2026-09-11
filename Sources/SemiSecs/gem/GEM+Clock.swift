@@ -16,7 +16,6 @@ extension GEM {
             
             /// ASCII 12
             case a12
-            
             /// ASCII 16
             case a16
             

@@ -643,7 +643,25 @@ fileprivate final class SECS2BodyInnerList: SECS2BodyInnerBase {
     
     fileprivate init(list: [any SECS2BodyProvider], data: Data) {
         self._values = list
-        super.init(data: data, secs2BodyItemType: .list)
+        
+        switch (data[0] & 0x03) {
+        case 3:
+            super.init(data: data.prefix(4), secs2BodyItemType: .list)
+        case 2:
+            super.init(data: data.prefix(3), secs2BodyItemType: .list)
+        default:
+            super.init(data: data.prefix(2), secs2BodyItemType: .list)
+        }
+    }
+    
+    fileprivate override var data: Data {
+        get {
+            var r = super.data
+            for value in self._values {
+                r.append(value.data)
+            }
+            return r
+        }
     }
     
     fileprivate override var count: Int {

@@ -7,12 +7,16 @@
 
 import Testing
 import Foundation
-import Network
 import SemiSecs
 
 struct HSMSSSCommunicatorTests {
     
-    private let testPort: NWEndpoint.Port = 5020
+    private let testPort: UInt16 = 5020
+    private let testMDLN: String = "MDLN-A"
+    private let testSoftRev: String = "000001"
+//    private let testALCD: UInt8 = 0x81
+//    private let testALID: UInt32 = 1001
+//    private let testALTX: String = "ON FIRE"
     
     private func activeCommunicator() -> HSMSSSCommunicator {
         let communicator = HSMSSSCommunicator()
@@ -93,10 +97,10 @@ struct HSMSSSCommunicatorTests {
                     case 1:
                         switch message.function {
                         case 1:
-                            try await communicator.gem.s1f2(primaryMessage: message, mdln: "MDLN-A", softrev: "000001")
+                            try await communicator.gem.s1f2(primaryMessage: message, mdln: self.testMDLN, softrev: self.testSoftRev)
                         case 13:
                             if message.wbit {
-                                try await communicator.gem.s1f14(primaryMessage: message, commack: .accepted, mdln: "MDLN-A", softrev: "000001")
+                                try await communicator.gem.s1f14(primaryMessage: message, commack: .accepted, mdln: testMDLN, softrev: self.testSoftRev)
                             }
                         case 15:
                             if message.wbit {
@@ -182,19 +186,19 @@ struct HSMSSSCommunicatorTests {
         
         try await Task.sleep(for: .seconds(0.2))
         
-        let commack = try await active.gem.s1f13()
-        guard commack == .accepted else {
-            Issue.record("COMMACK: \(commack)")
-            return
-        }
+        let (commack, mdlnS1F14, softrevS1F14) = try await active.gem.s1f13()
+        #expect(commack == .accepted)
+        #expect(mdlnS1F14 == self.testMDLN)
+        #expect(softrevS1F14 == self.testSoftRev)
         
         try await Task.sleep(for: .seconds(0.2))
         
         let onlack = try await active.gem.s1f17()
-        guard onlack == .accepted else {
-            Issue.record("ONLACK: \(onlack)")
-            return
-        }
+        #expect(onlack == .accepted)
+        
+        let (mdlnS1F2, softrevS1F2) = try await active.gem.s1f1()
+        #expect(mdlnS1F2 == self.testMDLN)
+        #expect(softrevS1F2 == self.testSoftRev)
         
         try await active.gem.s2f31Now(clockType: .a16)
         
@@ -206,17 +210,14 @@ struct HSMSSSCommunicatorTests {
         formatter.dateFormat = "yyyy/MM/dd HH:mm:ss"
         let dateString = formatter.string(from: date)
         print("S2F18: \(dateString)")
-
+        
         let s5f1 = try SMLMessageParser.shared.parse("S5F1 <L <B 0x81><U2 1001><A \"ON FIRE\">>.")
         try await passive.send(smlMessage: s5f1)
         
         try await Task.sleep(for: .seconds(10.0))
         
         let oflack = try await active.gem.s1f15()
-        guard oflack == .acknowledge else {
-            Issue.record("OFLACK: \(oflack)")
-            return
-        }
+        #expect(oflack == .acknowledge)
         
         active.shutdown()
         try await Task.sleep(for: .seconds(1.0))

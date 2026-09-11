@@ -19,8 +19,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         private var _isEquipment: Bool
         private var _timeout: SECSCommunicatorTimeoutConfig
         private var _connectionMode: HSMSConnectionMode
-        private var _ipAddress: NWEndpoint.Host?
-        private var _port: NWEndpoint.Port
+        private var _ipAddress: String
+        private var _port: UInt16
         private var _rebindDuration: Duration
         private var _doLinktest: Bool
         private var _linktestDuration: Duration
@@ -30,7 +30,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             self._isEquipment = true
             self._timeout = SECSCommunicatorTimeoutConfig()
             self._connectionMode = .passive
-            self._ipAddress = nil
+            self._ipAddress = ""
             self._port = 5000
             self._rebindDuration = .seconds(10.0)
             self._doLinktest = false
@@ -77,7 +77,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             }
         }
         
-        public var ipAddress: NWEndpoint.Host? {
+        public var ipAddress: String {
             get {
                 return self._ipAddress
             }
@@ -86,7 +86,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             }
         }
         
-        public var port: NWEndpoint.Port {
+        public var port: UInt16 {
             get {
                 return self._port
             }
@@ -141,6 +141,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     // MARK: - var
     
     private nonisolated(unsafe) var _didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
+    private nonisolated(unsafe) var _didSendWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
     
     /// Config
     public nonisolated(unsafe) var config = HSMSSSCommunicatorConfig()
@@ -182,6 +183,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         }
         
         self._didReceiveWholeHSMSMessage = nil
+        self._didSendWholeHSMSMessage = nil
     }
     
     deinit {
@@ -219,6 +221,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             if let error = error {
                                 Logger.nwConnection.error("\(error)")
                             } else {
+                                self._didSendWholeHSMSMessage?(pair.message, pair.connection)
                                 Logger.sendedHSMSMessage.notice("\(String(describing: pair.message))")
                             }
                         }
@@ -438,13 +441,24 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         try await self.session.sendSeparateRequest()
     }
     
+    /// Whole HSMSMessage send
+    public var didSendWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? {
+        get {
+            return self._didSendWholeHSMSMessage
+        }
+        set {
+            self._didSendWholeHSMSMessage = newValue
+        }
+    }
+    
     // MARK: - Active
     
     private func performActive(queue: DispatchQueue) async throws {
-        guard let activeIpAddress = self.config.ipAddress else {
-            fatalError("IP-Address not setted")
+        let ipAddress = NWEndpoint.Host(self.config.ipAddress)
+        guard let port = NWEndpoint.Port(rawValue: self.config.port) else {
+            fatalError("NWEndpoint.Port: \(self.config.port)")
         }
-        let connection = NWConnection(host: activeIpAddress, port: self.config.port, using: .tcp)
+        let connection = NWConnection(host: ipAddress, port: port, using: .tcp)
         let pipeline = self.newPipeline(connection: connection)
         
         defer {
@@ -554,8 +568,11 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     // MARK: - Passive
     
     private func performPassive(queue: DispatchQueue) async throws {
+        guard let port = NWEndpoint.Port(rawValue: self.config.port) else {
+            fatalError("NWEndpoint.Port: \(self.config.port)")
+        }
         do {
-            let listener = try NWListenerStreamWrapper(using: .tcp, on: config.port)
+            let listener = try NWListenerStreamWrapper(using: .tcp, on: port)
             defer {
                 listener.cancel()
             }

@@ -15,15 +15,10 @@ extension GEM {
         /// Acknowledge, byte=0x00
         case acknowledge
         
-        /// Not accepted, byte=0x01
-        case notAccepted
-        
         private var itemProperty: (byte: UInt8, description: String) {
             switch self {
             case .acknowledge:
                 return (byte: 0x00, description: "Acknowledge")
-            case .notAccepted:
-                return (byte: 0x01, description: "Not accepted")
             }
         }
         
@@ -110,19 +105,25 @@ extension GEM {
     /// S1F1 W.
     /// ```
     ///
-    /// - Returns: S1F2 SECSMessage
+    /// - Returns: S1F2 value
+    ///   - mdln: MDLN
+    ///   - softrev: SOFTREV
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     ///   - `SECSWaitReplyError`: if wait reply failed.
     ///   - `GEMError`: if unexpected response.
     @discardableResult
-    public func s1f1() async throws -> any SECSMessage {
+    public func s1f1() async throws -> (mdln: String?, softrev: String?) {
         guard let s1f2 = try await self.communicator?.send(stream: 1, function: 1, wbit: true) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s1f2, stream: 1, function: 2)
+        guard let secs2Body = s1f2.secs2Body,
+              secs2Body.type == .list else {
+            throw GEMError.illegalData(responseMesage: s1f2)
+        }
         
-        return s1f2
+        return (mdln: secs2Body.stringValue(at: 0), softrev: secs2Body.stringValue(at: 1))
     }
     
     /// S1F2 On Line Data
