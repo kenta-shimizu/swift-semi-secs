@@ -100,6 +100,58 @@ public enum HSMSReceiveError: SECSReceiveError, HSMSError {
     }
 }
 
+public enum HSMSNetworkEvent: CustomStringConvertible, CustomDebugStringConvertible, Sendable {
+    
+    case shutdown
+    case activeTryConnect(ipAddress: String, port: UInt16)
+    case activeSuccessConnect(ipAddress: String, port: UInt16)
+    case activeFailedConnect(ipAddress: String, port: UInt16, error: Error)
+    case activeSleepTimeoutT5(timeout: Duration)
+    case passiveTryBind(port: UInt16)
+    case passiveSuccessBind(port: UInt16)
+    case passiveFailedBind(port: UInt16, error: Error)
+    case passiveTryAccept(ipAddress: String, port: UInt16)
+    case passiveSuccessAccept(ipAddress: String, port: UInt16)
+    case passiveFailedAccept(ipAddress: String, port: UInt16, error: Error)
+    case passiveSleepRebind(timeout: Duration)
+    
+    public var description: String {
+        let type = String(describing: type(of: self))
+        
+        switch self {
+        case .shutdown:
+            return "\(type) shutdown"
+        case .activeTryConnect(let ipAddress, let port):
+            return "\(type) active try connect, ipAddress: \(ipAddress), port: \(port)"
+        case .activeSuccessConnect(let ipAddress, let port):
+            return "\(type) active connect success, ipAddress: \(ipAddress), port: \(port)"
+        case .activeFailedConnect(let ipAddress, let port, let error):
+            return "\(type) active connect failed, ipAddress: \(ipAddress), port: \(port), error: \(error)"
+        case .activeSleepTimeoutT5(let timeout):
+            return "\(type) active sleep timeout-T5, timeout: \(timeout.toPureSecondsString(fractionalLength: 1))"
+        case .passiveTryBind(let port):
+            return "\(type) passive try bind, port: \(port)"
+        case .passiveSuccessBind(let port):
+            return "\(type) passive bind success, port: \(port)"
+        case .passiveFailedBind(let port, let error):
+            return "\(type) passive bind failed, port: \(port), error: \(error)"
+        case .passiveTryAccept(let ipAddress, let port):
+            return "\(type) passive try accept, ipAddress: \(ipAddress), port: \(port)"
+        case .passiveSuccessAccept(let ipAddress, let port):
+            return "\(type) passive accept success, ipAddress: \(ipAddress), port: \(port)"
+        case .passiveFailedAccept(let ipAddress, let port, let error):
+            return "\(type) passive accept failed, ipAddress: \(ipAddress), port: \(port), error: \(error)"
+        case .passiveSleepRebind(let timeout):
+            return "\(type) passive sleep rebind, timeout: \(timeout.toPureSecondsString(fractionalLength: 1))"
+        }
+    }
+    
+    public var debugDescription: String {
+        return self.description;
+    }
+    
+}
+
 /// HSMS Connection mode.
 public enum HSMSConnectionMode: Sendable {
     case active

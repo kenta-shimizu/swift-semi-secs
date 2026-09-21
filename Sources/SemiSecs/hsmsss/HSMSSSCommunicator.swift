@@ -137,11 +137,13 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     private let startAndShutdown = StartAndShutdown()
     private let (shutdownStream, shutdownContinuation) = AsyncStream.makeStream(of: Void.self)
     private let (receiveWholeHSMSMessageStream, receiveWholeHSMSMessageContinuation) = AsyncStream.makeStream(of: HSMSMessageAndNWConnection.self)
+    private let (networkEventStream, networkEventContinuation) = AsyncStream.makeStream(of: HSMSNetworkEvent.self)
     
     // MARK: - var
     
     private nonisolated(unsafe) var _didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
     private nonisolated(unsafe) var _didSendWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
+    private nonisolated(unsafe) var _newNetworkEvent: ((HSMSNetworkEvent) -> Void)?
     
     /// Config
     public nonisolated(unsafe) var config = HSMSSSCommunicatorConfig()
@@ -184,6 +186,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         
         self._didReceiveWholeHSMSMessage = nil
         self._didSendWholeHSMSMessage = nil
+        self._newNetworkEvent = nil
     }
     
     deinit {
@@ -250,6 +253,15 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         
         Task { [weak self] in
             guard let self = self else { return }
+            for await event in self.networkEventStream {
+                self._newNetworkEvent?(event)
+            }
+            
+            Logger.communicator.debug("HSMS Network Event finished.")
+        }
+        
+        Task { [weak self] in
+            guard let self = self else { return }
             
             // receive whole HSMS-Message.
             Task {
@@ -274,15 +286,25 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             try await self.performActive(queue: queue)
                             try Task.checkCancellation()
                             
-                            Logger.communicator.notice("HSMS-SS Active sleep T5-Timeout: \(self.config.timeout.t5)")
-                            try await Task.sleep(for: self.config.timeout.t5)
-                            
                         case .passive:
                             Logger.communicator.notice("HSMS-SS Passive perform start.")
                             try await self.performPassive(queue: queue)
                             try Task.checkCancellation()
+                        }
+                        
+                        switch self.config.connectionMode {
+                        case .active:
+                            Logger.communicator.notice("HSMS-SS Active sleep T5-Timeout: \(self.config.timeout.t5)")
                             
+                            self.networkEventContinuation.yield(.activeSleepTimeoutT5(timeout: self.config.timeout.t5))
+                            
+                            try await Task.sleep(for: self.config.timeout.t5)
+                            
+                        case .passive:
                             Logger.communicator.notice("HSMS-SS Passive sleep rebind duration: \(self.config.rebindDuration)")
+                            
+                            self.networkEventContinuation.yield(.passiveSleepRebind(timeout: self.config.rebindDuration))
+                            
                             try await Task.sleep(for: self.config.rebindDuration)
                         }
                     }
@@ -302,6 +324,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             
             self.startAndShutdown.shutdown()
             
+            self.networkEventContinuation.yield(.shutdown)
+            self.networkEventContinuation.finish()
             self._didReceiveWholeHSMSMessage = nil
             self.receiveWholeHSMSMessageContinuation.finish()
             await self.transactor.shutdown()
@@ -451,6 +475,18 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         }
     }
     
+    // MARK: - NetworkEvent
+    
+    /// newNetworkEvent
+    public var newNetworkEvent: ((HSMSNetworkEvent) -> Void)? {
+        get {
+            return self._newNetworkEvent
+        }
+        set {
+            self._newNetworkEvent = newValue
+        }
+    }
+    
     // MARK: - Active
     
     private func performActive(queue: DispatchQueue) async throws {
@@ -469,7 +505,11 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         }
         
         do {
+            self.networkEventContinuation.yield(.activeTryConnect(ipAddress: self.config.ipAddress, port: self.config.port))
+            
             try await connection.connect(queue: queue)
+            
+            self.networkEventContinuation.yield(.activeSuccessConnect(ipAddress: self.config.ipAddress, port: self.config.port))
             
             guard await self.session.connectionAndState.set(connection: connection, state: .notSelected) else {
                 Logger.communicator.fault("NWConnection already setted.")
@@ -561,6 +601,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             throw error
         }
         catch {
+            self.networkEventContinuation.yield(.activeFailedConnect(ipAddress: self.config.ipAddress, port: self.config.port, error: error))
+            
             Logger.nwConnection.error("\(error)")
         }
     }
@@ -577,7 +619,11 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 listener.cancel()
             }
             
+            self.networkEventContinuation.yield(.passiveTryBind(port: self.config.port))
+            
             try listener.start(queue: queue)
+            
+            self.networkEventContinuation.yield(.passiveSuccessBind(port: self.config.port))
             
             let stream = listener.connectionAndQueueStream()
             for await result in stream {
@@ -585,9 +631,17 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 case .success(let pair):
                     Task.detached {
                         do {
+                            if let (ipAddress, port) = pair.connection.clientIPAddressAndPort {
+                                self.networkEventContinuation.yield(.passiveTryAccept(ipAddress: ipAddress, port: port))
+                            }
+                            
                             try await self.performPassiveConnection(connection: pair.connection, queue: pair.queue)
                         }
                         catch {
+                            if let (ipAddress, port) = pair.connection.clientIPAddressAndPort {
+                                self.networkEventContinuation.yield(.passiveFailedAccept(ipAddress: ipAddress, port: port, error: error))
+                            }
+                            
                             Logger.nwConnection.error("\(error)")
                         }
                     }
@@ -600,6 +654,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             throw error
         }
         catch {
+            self.networkEventContinuation.yield(.passiveFailedBind(port: self.config.port, error: error))
+            
             Logger.nwConnection.error("\(error)")
         }
     }
@@ -615,6 +671,10 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         }
         
         try await connection.connect(queue: queue)
+        
+        if let (ipAddress, port) = connection.clientIPAddressAndPort {
+            self.networkEventContinuation.yield(.passiveSuccessAccept(ipAddress: ipAddress, port: port))
+        }
         
         await withTaskGroup(of: Void.self) { group in
             // receive dataStream

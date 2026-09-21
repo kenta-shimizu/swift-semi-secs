@@ -170,6 +170,9 @@ struct HSMSSSCommunicatorTests {
         active.config.timeout.t3 = .seconds(2.0)
         active.config.timeout.t6 = .seconds(2.0)
         
+        passive.newNetworkEvent = { print($0) }
+        active.newNetworkEvent = { print($0) }
+        
         defer {
             active.shutdown()
             passive.shutdown()
