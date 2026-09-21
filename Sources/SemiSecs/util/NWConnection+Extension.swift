@@ -79,5 +79,15 @@ extension NWConnection {
             readNext()
         }
     }
-
+    
+    /// Client IP-Address and Port
+    internal var clientIPAddressAndPort: (ipAddress: String, port: UInt16)? {
+        switch self.endpoint {
+        case .hostPort(let host, let port):
+            return (ipAddress: String(describing: host), port: port.rawValue)
+        default:
+            return nil
+        }
+    }
+    
 }
