@@ -14,9 +14,6 @@ struct HSMSSSCommunicatorTests {
     private let testPort: UInt16 = 5020
     private let testMDLN: String = "MDLN-A"
     private let testSoftRev: String = "000001"
-//    private let testALCD: UInt8 = 0x81
-//    private let testALID: UInt32 = 1001
-//    private let testALTX: String = "ON FIRE"
     
     private func activeCommunicator() -> HSMSSSCommunicator {
         let communicator = HSMSSSCommunicator()

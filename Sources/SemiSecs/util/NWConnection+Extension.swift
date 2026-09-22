@@ -23,6 +23,9 @@ extension NWConnection {
                 case .ready:
                     stateContinuation.yield(Result.success(()))
                     stateContinuation.finish()
+                case .waiting(let error):
+                    stateContinuation.yield(Result.failure(error))
+                    stateContinuation.finish()
                 case .failed(let error):
                     stateContinuation.yield(Result.failure(error))
                     stateContinuation.finish()
