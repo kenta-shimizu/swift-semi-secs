@@ -40,6 +40,9 @@ internal final class NWListenerStreamWrapper: Sendable {
             guard let self = self else { return }
             
             switch state {
+            case .waiting(let error):
+                self.continuation.yield(.failure(error))
+                self.continuation.finish()
             case .failed(let error):
                 self.continuation.yield(.failure(error))
                 self.continuation.finish()
@@ -50,7 +53,7 @@ internal final class NWListenerStreamWrapper: Sendable {
                 break
             }
         }
-            
+        
         self.listener.newConnectionHandler = { [weak self] connection in
             guard let self = self else { return }
             

@@ -490,11 +490,14 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     // MARK: - Active
     
     private func performActive(queue: DispatchQueue) async throws {
-        let ipAddress = NWEndpoint.Host(self.config.ipAddress)
-        guard let port = NWEndpoint.Port(rawValue: self.config.port) else {
-            fatalError("NWEndpoint.Port: \(self.config.port)")
+        let ipAddress = self.config.ipAddress
+        let port = self.config.port
+        let nwIpAddress = NWEndpoint.Host(ipAddress)
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+            fatalError("NWEndpoint.Port: \(port)")
         }
-        let connection = NWConnection(host: ipAddress, port: port, using: .tcp)
+        
+        let connection = NWConnection(host: nwIpAddress, port: nwPort, using: .tcp)
         let pipeline = self.newPipeline(connection: connection)
         
         defer {
@@ -502,14 +505,16 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             if connection.state != .cancelled {
                 connection.cancel()
             }
+            
+            self.networkEventContinuation.yield(.activeConnectCancelled(ipAddress: ipAddress, port: port))
         }
         
         do {
-            self.networkEventContinuation.yield(.activeTryConnect(ipAddress: self.config.ipAddress, port: self.config.port))
+            self.networkEventContinuation.yield(.activeConnectStart(ipAddress: ipAddress, port: port))
             
             try await connection.connect(queue: queue)
             
-            self.networkEventContinuation.yield(.activeSuccessConnect(ipAddress: self.config.ipAddress, port: self.config.port))
+            self.networkEventContinuation.yield(.activeConnectSuccess(ipAddress: ipAddress, port: port))
             
             guard await self.session.connectionAndState.set(connection: connection, state: .notSelected) else {
                 Logger.communicator.fault("NWConnection already setted.")
@@ -601,7 +606,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             throw error
         }
         catch {
-            self.networkEventContinuation.yield(.activeFailedConnect(ipAddress: self.config.ipAddress, port: self.config.port, error: error))
+            self.networkEventContinuation.yield(.activeConnectFailed(ipAddress: ipAddress, port: port, error: error))
             
             Logger.nwConnection.error("\(error)")
         }
@@ -613,36 +618,28 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         guard let port = NWEndpoint.Port(rawValue: self.config.port) else {
             fatalError("NWEndpoint.Port: \(self.config.port)")
         }
+        
         do {
             let listener = try NWListenerStreamWrapper(using: .tcp, on: port)
             defer {
                 listener.cancel()
+                self.networkEventContinuation.yield(.passiveBindCancelled(port: self.config.port))
             }
             
-            self.networkEventContinuation.yield(.passiveTryBind(port: self.config.port))
+            self.networkEventContinuation.yield(.passiveBindStart(port: self.config.port))
             
             try listener.start(queue: queue)
             
-            self.networkEventContinuation.yield(.passiveSuccessBind(port: self.config.port))
+            self.networkEventContinuation.yield(.passiveBindSuccess(port: self.config.port))
             
             let stream = listener.connectionAndQueueStream()
             for await result in stream {
                 switch result {
                 case .success(let pair):
                     Task.detached {
-                        do {
-                            if let (ipAddress, port) = pair.connection.clientIPAddressAndPort {
-                                self.networkEventContinuation.yield(.passiveTryAccept(ipAddress: ipAddress, port: port))
-                            }
-                            
-                            try await self.performPassiveConnection(connection: pair.connection, queue: pair.queue)
-                        }
-                        catch {
-                            if let (ipAddress, port) = pair.connection.clientIPAddressAndPort {
-                                self.networkEventContinuation.yield(.passiveFailedAccept(ipAddress: ipAddress, port: port, error: error))
-                            }
-                            
-                            Logger.nwConnection.error("\(error)")
+                        await self.performPassiveAccept(connection: pair.connection, queue: pair.queue)
+                        if pair.connection.state != .cancelled {
+                            pair.connection.cancel()
                         }
                     }
                 case .failure(let error):
@@ -654,173 +651,184 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             throw error
         }
         catch {
-            self.networkEventContinuation.yield(.passiveFailedBind(port: self.config.port, error: error))
+            self.networkEventContinuation.yield(.passiveBindFailed(port: self.config.port, error: error))
             
             Logger.nwConnection.error("\(error)")
         }
     }
     
-    private func performPassiveConnection(connection: NWConnection, queue: DispatchQueue) async throws {
+    private func performPassiveAccept(connection: NWConnection, queue: DispatchQueue) async {
+        guard let (ipAddress, port) = connection.clientIPAddressAndPort else {
+            return
+        }
+        
         let pipeline = self.newPipeline(connection: connection)
         
-        defer {
-            pipeline.shutdown()
-            if connection.state != .cancelled {
-                connection.cancel()
-            }
-        }
-        
-        try await connection.connect(queue: queue)
-        
-        if let (ipAddress, port) = connection.clientIPAddressAndPort {
-            self.networkEventContinuation.yield(.passiveSuccessAccept(ipAddress: ipAddress, port: port))
-        }
-        
-        await withTaskGroup(of: Void.self) { group in
-            // receive dataStream
-            group.addTask {
-                let dataStream = connection.dataStream()
-                for await result in dataStream {
-                    switch result {
-                    case .success(let data):
-                        pipeline.yield(data: data)
-                    case .failure(let error):
-                        Logger.nwConnection.error("\(error)")
-                    }
-                }
-                
-                Logger.communicator.debug("NWConnection.dataStream finished.")
-            }
+        do {
+            self.networkEventContinuation.yield(.passiveAcceptStart(ipAddress: ipAddress, port: port))
             
-            // session-state
-            group.addTask { [weak self] in
-                guard let self = self else { return }
-                
-                let pipelineStream = pipeline.hsmsMessageAndNWConnectionStream()
-                
-                do {
-                    guard let firstRequestResult = try await pipelineStream.poll(timeout: self.config.timeout.t7) else {
-                        Logger.communicator.error("HSMS-SS-Passive Timeout-T7")
-                        return
+            try await connection.connect(queue: queue)
+            
+            self.networkEventContinuation.yield(.passiveAcceptSuccess(ipAddress: ipAddress, port: port))
+            
+            await withTaskGroup(of: Void.self) { group in
+                // receive dataStream
+                group.addTask {
+                    let dataStream = connection.dataStream()
+                    for await result in dataStream {
+                        switch result {
+                        case .success(let data):
+                            pipeline.yield(data: data)
+                        case .failure(let error):
+                            Logger.nwConnection.error("\(error)")
+                        }
                     }
                     
-                    switch firstRequestResult {
-                    case .success(let pair):
-                        self.receiveWholeHSMSMessageContinuation.yield(pair)
+                    Logger.communicator.debug("NWConnection.dataStream finished.")
+                }
+                
+                // session-state
+                group.addTask { [weak self] in
+                    guard let self = self else { return }
+                    
+                    let pipelineStream = pipeline.hsmsMessageAndNWConnectionStream()
+                    
+                    do {
+                        guard let firstRequestResult = try await pipelineStream.poll(timeout: self.config.timeout.t7) else {
+                            Logger.communicator.error("HSMS-SS-Passive Timeout-T7")
+                            return
+                        }
                         
-                        switch pair.message.messageType {
-                        case .selectRequest:
-                            // accept type
-                            break
+                        switch firstRequestResult {
+                        case .success(let pair):
+                            self.receiveWholeHSMSMessageContinuation.yield(pair)
                             
-                        case .selectResponse, .deselectResponse, .linktestResponse:
-                            // reject not-open-transaction
-                            let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .transactionNotOpen, byte2: pair.message.header10Bytes[5])
-                            try await self.transactor.send(message: responseMessage, connection: pair.connection)
-                            return
-                            
-                        case .rejectRequest, .separateRequest:
-                            // ignore type
-                            return
-                            
-                        default:
-                            // reject not-support-type
-                            if HSMSMessage.MessageType.hasPType(hsmsMessage: pair.message) {
-                                let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeS, byte2: pair.message.header10Bytes[5])
+                            switch pair.message.messageType {
+                            case .selectRequest:
+                                // accept type
+                                break
+                                
+                            case .selectResponse, .deselectResponse, .linktestResponse:
+                                // reject not-open-transaction
+                                let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .transactionNotOpen, byte2: pair.message.header10Bytes[5])
                                 try await self.transactor.send(message: responseMessage, connection: pair.connection)
-                            } else {
-                                let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeP, byte2: pair.message.header10Bytes[4])
-                                try await self.transactor.send(message: responseMessage, connection: pair.connection)
+                                return
+                                
+                            case .rejectRequest, .separateRequest:
+                                // ignore type
+                                return
+                                
+                            default:
+                                // reject not-support-type
+                                if HSMSMessage.MessageType.hasPType(hsmsMessage: pair.message) {
+                                    let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeS, byte2: pair.message.header10Bytes[5])
+                                    try await self.transactor.send(message: responseMessage, connection: pair.connection)
+                                } else {
+                                    let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeP, byte2: pair.message.header10Bytes[4])
+                                    try await self.transactor.send(message: responseMessage, connection: pair.connection)
+                                }
+                                return
                             }
-                            return
-                        }
-                        
-                        guard await self.session.connectionAndState.set(connection: pair.connection, state: .notSelected, .selected) else {
-                            Logger.communicator.info("NWConnection already setted.")
                             
-                            let responseMessage = self.messageBuilder.buildSelectResponse(selectRequest: pair.message, selectStatus: .alreadyUsed)
-                            try await self.transactor.send(message: responseMessage, connection: pair.connection)
+                            guard await self.session.connectionAndState.set(connection: pair.connection, state: .notSelected, .selected) else {
+                                Logger.communicator.info("NWConnection already setted.")
+                                
+                                let responseMessage = self.messageBuilder.buildSelectResponse(selectRequest: pair.message, selectStatus: .alreadyUsed)
+                                try await self.transactor.send(message: responseMessage, connection: pair.connection)
+                                return
+                            }
+                            
+                            // success selected.
+                            do {
+                                try await self.session.replySelectResponse(selectRequest: pair.message, selectStatus: .success)
+                            }
+                            catch {
+                                await self.session.connectionAndState.unset()
+                                throw error
+                            }
+                            
+                        case .failure(let error):
+                            Logger.communicator.error("\(error)")
                             return
                         }
-                        
-                        // success selected.
-                        do {
-                            try await self.session.replySelectResponse(selectRequest: pair.message, selectStatus: .success)
-                        }
-                        catch {
-                            await self.session.connectionAndState.unset()
-                            throw error
-                        }
-                        
-                    case .failure(let error):
+                    }
+                    catch is CancellationError {
+                        // ignore
+                        return
+                    }
+                    catch {
                         Logger.communicator.error("\(error)")
                         return
                     }
-                }
-                catch is CancellationError {
-                    // ignore
-                    return
-                }
-                catch {
-                    Logger.communicator.error("\(error)")
-                    return
-                }
-                
-                let linktestTimer = self.newLinktestTimer()
-                
-                await withTaskGroup(of: Void.self) { innerGroup in
-                    // HSMS-Message pipeline
-                    innerGroup.addTask {
-                        for await result in pipelineStream {
-                            switch result {
-                            case .success(let pair):
-                                self.receiveWholeHSMSMessageContinuation.yield(pair)
-                                await self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
-                                await linktestTimer.reset()
-                            case .failure(let error):
+                    
+                    let linktestTimer = self.newLinktestTimer()
+                    
+                    await withTaskGroup(of: Void.self) { innerGroup in
+                        // HSMS-Message pipeline
+                        innerGroup.addTask {
+                            for await result in pipelineStream {
+                                switch result {
+                                case .success(let pair):
+                                    self.receiveWholeHSMSMessageContinuation.yield(pair)
+                                    await self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
+                                    await linktestTimer.reset()
+                                case .failure(let error):
+                                    Logger.communicator.error("\(error)")
+                                }
+                            }
+                            
+                            Logger.communicator.debug("pipeline.hsmsMessageAndNWConnectionStream finished.")
+                        }
+                        
+                        // inner-session-state
+                        innerGroup.addTask {
+                            do {
+                                // Linktest
+                                linktestTimer.linktest = { [weak self] in
+                                    guard let self = self else { return }
+                                    Task {
+                                        guard await self.linktest() else {
+                                            await self.session.connectionAndState.unset()
+                                            return
+                                        }
+                                    }
+                                }
+                                await linktestTimer.start()
+                                
+                                try await self.session.connectionAndState.hsmsConnectionStateUpdateNotifier.until(.notConnected)
+                            }
+                            catch is CancellationError {
+                                // ignore
+                            }
+                            catch {
                                 Logger.communicator.error("\(error)")
                             }
                         }
                         
-                        Logger.communicator.debug("pipeline.hsmsMessageAndNWConnectionStream finished.")
+                        await innerGroup.next()
+                        innerGroup.cancelAll()
+                        await linktestTimer.shutdown()
+                        
+                        await self.session.connectionAndState.unset()
                     }
-                    
-                    // inner-session-state
-                    innerGroup.addTask {
-                        do {
-                            // Linktest
-                            linktestTimer.linktest = { [weak self] in
-                                guard let self = self else { return }
-                                Task {
-                                    guard await self.linktest() else {
-                                        await self.session.connectionAndState.unset()
-                                        return
-                                    }
-                                }
-                            }
-                            await linktestTimer.start()
-                            
-                            try await self.session.connectionAndState.hsmsConnectionStateUpdateNotifier.until(.notConnected)
-                        }
-                        catch is CancellationError {
-                            // ignore
-                        }
-                        catch {
-                            Logger.communicator.error("\(error)")
-                        }
-                    }
-                    
-                    await innerGroup.next()
-                    innerGroup.cancelAll()
-                    await linktestTimer.shutdown()
-                    
-                    await self.session.connectionAndState.unset()
                 }
+                
+                await group.next()
+                group.cancelAll()
             }
-            
-            await group.next()
-            group.cancelAll()
         }
+        catch _ as CancellationError {
+            // ignore
+        }
+        catch {
+            self.networkEventContinuation.yield(.passiveAcceptFailed(ipAddress: ipAddress, port: port, error: error))
+            
+            Logger.nwConnection.error("\(error)")
+        }
+        
+        pipeline.shutdown()
+
+        self.networkEventContinuation.yield(.passiveAcceptCancelled(ipAddress: ipAddress, port: port))
     }
     
     // MARK: -

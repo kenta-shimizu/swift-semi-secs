@@ -103,16 +103,19 @@ public enum HSMSReceiveError: SECSReceiveError, HSMSError {
 public enum HSMSNetworkEvent: CustomStringConvertible, CustomDebugStringConvertible, Sendable {
     
     case shutdown
-    case activeTryConnect(ipAddress: String, port: UInt16)
-    case activeSuccessConnect(ipAddress: String, port: UInt16)
-    case activeFailedConnect(ipAddress: String, port: UInt16, error: Error)
+    case activeConnectStart(ipAddress: String, port: UInt16)
+    case activeConnectSuccess(ipAddress: String, port: UInt16)
+    case activeConnectFailed(ipAddress: String, port: UInt16, error: Error)
+    case activeConnectCancelled(ipAddress: String, port: UInt16)
     case activeSleepTimeoutT5(timeout: Duration)
-    case passiveTryBind(port: UInt16)
-    case passiveSuccessBind(port: UInt16)
-    case passiveFailedBind(port: UInt16, error: Error)
-    case passiveTryAccept(ipAddress: String, port: UInt16)
-    case passiveSuccessAccept(ipAddress: String, port: UInt16)
-    case passiveFailedAccept(ipAddress: String, port: UInt16, error: Error)
+    case passiveBindStart(port: UInt16)
+    case passiveBindSuccess(port: UInt16)
+    case passiveBindFailed(port: UInt16, error: Error)
+    case passiveBindCancelled(port: UInt16)
+    case passiveAcceptStart(ipAddress: String, port: UInt16)
+    case passiveAcceptSuccess(ipAddress: String, port: UInt16)
+    case passiveAcceptFailed(ipAddress: String, port: UInt16, error: Error)
+    case passiveAcceptCancelled(ipAddress: String, port: UInt16)
     case passiveSleepRebind(timeout: Duration)
     
     public var description: String {
@@ -121,26 +124,32 @@ public enum HSMSNetworkEvent: CustomStringConvertible, CustomDebugStringConverti
         switch self {
         case .shutdown:
             return "\(type) shutdown"
-        case .activeTryConnect(let ipAddress, let port):
-            return "\(type) active try connect, ipAddress: \(ipAddress), port: \(port)"
-        case .activeSuccessConnect(let ipAddress, let port):
+        case .activeConnectStart(let ipAddress, let port):
+            return "\(type) active connect start, ipAddress: \(ipAddress), port: \(port)"
+        case .activeConnectSuccess(let ipAddress, let port):
             return "\(type) active connect success, ipAddress: \(ipAddress), port: \(port)"
-        case .activeFailedConnect(let ipAddress, let port, let error):
+        case .activeConnectFailed(let ipAddress, let port, let error):
             return "\(type) active connect failed, ipAddress: \(ipAddress), port: \(port), error: \(error)"
+        case .activeConnectCancelled(let ipAddress, let port):
+            return "\(type) active connect cancelled, ipAddress: \(ipAddress), port: \(port)"
         case .activeSleepTimeoutT5(let timeout):
             return "\(type) active sleep timeout-T5, timeout: \(timeout.toPureSecondsString(fractionalLength: 1))"
-        case .passiveTryBind(let port):
-            return "\(type) passive try bind, port: \(port)"
-        case .passiveSuccessBind(let port):
+        case .passiveBindStart(let port):
+            return "\(type) passive bind start, port: \(port)"
+        case .passiveBindSuccess(let port):
             return "\(type) passive bind success, port: \(port)"
-        case .passiveFailedBind(let port, let error):
+        case .passiveBindFailed(let port, let error):
             return "\(type) passive bind failed, port: \(port), error: \(error)"
-        case .passiveTryAccept(let ipAddress, let port):
-            return "\(type) passive try accept, ipAddress: \(ipAddress), port: \(port)"
-        case .passiveSuccessAccept(let ipAddress, let port):
+        case .passiveBindCancelled(let port):
+            return "\(type) passive bind cancelled, port: \(port)"
+        case .passiveAcceptStart(let ipAddress, let port):
+            return "\(type) passive accept start, ipAddress: \(ipAddress), port: \(port)"
+        case .passiveAcceptSuccess(let ipAddress, let port):
             return "\(type) passive accept success, ipAddress: \(ipAddress), port: \(port)"
-        case .passiveFailedAccept(let ipAddress, let port, let error):
+        case .passiveAcceptFailed(let ipAddress, let port, let error):
             return "\(type) passive accept failed, ipAddress: \(ipAddress), port: \(port), error: \(error)"
+        case .passiveAcceptCancelled(let ipAddress, let port):
+            return "\(type) passive accept cancelled, ipAddress: \(ipAddress), port: \(port)"
         case .passiveSleepRebind(let timeout):
             return "\(type) passive sleep rebind, timeout: \(timeout.toPureSecondsString(fractionalLength: 1))"
         }
