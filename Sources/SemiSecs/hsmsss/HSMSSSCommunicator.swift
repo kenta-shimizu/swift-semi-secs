@@ -505,8 +505,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             if connection.state != .cancelled {
                 connection.cancel()
             }
-            
-            self.networkEventContinuation.yield(.activeConnectCancelled(ipAddress: ipAddress, port: port))
         }
         
         do {
@@ -553,6 +551,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             Logger.nwConnection.error("\(error)")
                         }
                     }
+                    
+                    self.networkEventContinuation.yield(.activeConnectCancelled(ipAddress: ipAddress, port: port))
                     
                     Logger.communicator.debug("NWConnection.dataStream finished.")
                 }
@@ -638,9 +638,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 case .success(let pair):
                     Task.detached {
                         await self.performPassiveAccept(connection: pair.connection, queue: pair.queue)
-                        if pair.connection.state != .cancelled {
-                            pair.connection.cancel()
-                        }
                     }
                 case .failure(let error):
                     throw error
@@ -683,6 +680,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             Logger.nwConnection.error("\(error)")
                         }
                     }
+                    
+                    self.networkEventContinuation.yield(.passiveAcceptCancelled(ipAddress: ipAddress, port: port))
                     
                     Logger.communicator.debug("NWConnection.dataStream finished.")
                 }
@@ -827,8 +826,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         }
         
         pipeline.shutdown()
-
-        self.networkEventContinuation.yield(.passiveAcceptCancelled(ipAddress: ipAddress, port: port))
     }
     
     // MARK: -

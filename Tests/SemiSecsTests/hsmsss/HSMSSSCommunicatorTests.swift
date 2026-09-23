@@ -224,5 +224,27 @@ struct HSMSSSCommunicatorTests {
         passive.shutdown()
         try await Task.sleep(for: .seconds(1.0))
     }
-
+    
+    @Test func testMulti() async throws {
+        let passive = self.passiveCommunicator()
+        let active1 = self.activeCommunicator()
+        let active2 = self.activeCommunicator()
+        
+        passive.newNetworkEvent = { print($0) }
+        active1.newNetworkEvent = { print($0) }
+        active2.newNetworkEvent = { print($0) }
+        
+        try passive.start()
+        try await Task.sleep(for: .seconds(0.5))
+        try active1.start()
+        try await Task.sleep(for: .seconds(1.5))
+        try active2.start()
+        try await Task.sleep(for: .seconds(5.0))
+        active2.shutdown()
+        try await Task.sleep(for: .seconds(1.0))
+        active1.shutdown()
+        try await Task.sleep(for: .seconds(1.0))
+        passive.shutdown()
+    }
+    
 }
