@@ -148,13 +148,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     /// Config
     public nonisolated(unsafe) var config = HSMSSSCommunicatorConfig()
     
-    /// GEM
-    public var gem: GEM {
-        get {
-            return self.session.gem
-        }
-    }
-    
     /// Create HSMS-SS communicator instance.
     public init() {
         // messageBuilder
@@ -463,6 +456,12 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     public func sendSeparateRequest() async throws {
         try await self.session.sendSeparateRequest()
+    }
+    
+    public var gem: GEM {
+        get {
+            return self.session.gem
+        }
     }
     
     /// Whole HSMSMessage send

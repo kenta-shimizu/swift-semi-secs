@@ -11,15 +11,14 @@ import SemiSecs
 
 struct HSMSSSCommunicatorTests {
     
-    private let testPort: UInt16 = 5020
     private let testMDLN: String = "MDLN-A"
     private let testSoftRev: String = "000001"
     
-    private func activeCommunicator() -> HSMSSSCommunicator {
+    private func activeCommunicator(port: UInt16) -> HSMSSSCommunicator {
         let communicator = HSMSSSCommunicator()
         communicator.config.connectionMode = .active
         communicator.config.ipAddress = "127.0.0.1"
-        communicator.config.port = self.testPort
+        communicator.config.port = port
         communicator.config.isEquipment = false
         communicator.config.sessionId = 10
         communicator.config.timeout.t3 = .seconds(45.0)
@@ -74,10 +73,10 @@ struct HSMSSSCommunicatorTests {
         return communicator
     }
     
-    private func passiveCommunicator() -> HSMSSSCommunicator {
+    private func passiveCommunicator(port: UInt16) -> HSMSSSCommunicator {
         let communicator = HSMSSSCommunicator()
         communicator.config.connectionMode = .passive
-        communicator.config.port = self.testPort
+        communicator.config.port = port
         communicator.config.isEquipment = true
         communicator.config.sessionId = 10
         communicator.config.timeout.t3 = .seconds(45.0)
@@ -160,8 +159,10 @@ struct HSMSSSCommunicatorTests {
     }
     
     @Test func testTest() async throws {
-        let passive = self.passiveCommunicator()
-        let active = self.activeCommunicator()
+        let testPort: UInt16 = 15010
+        
+        let passive = self.passiveCommunicator(port: testPort)
+        let active = self.activeCommunicator(port: testPort)
         
         active.config.linktestDuration = .seconds(3.0)
         active.config.timeout.t3 = .seconds(2.0)
@@ -226,9 +227,12 @@ struct HSMSSSCommunicatorTests {
     }
     
     @Test func testMulti() async throws {
-        let passive = self.passiveCommunicator()
-        let active1 = self.activeCommunicator()
-        let active2 = self.activeCommunicator()
+        
+        let testPort: UInt16 = 15020
+        
+        let passive = self.passiveCommunicator(port: testPort)
+        let active1 = self.activeCommunicator(port: testPort)
+        let active2 = self.activeCommunicator(port: testPort)
         
         passive.newNetworkEvent = { print($0) }
         active1.newNetworkEvent = { print($0) }

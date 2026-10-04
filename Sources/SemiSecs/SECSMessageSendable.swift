@@ -60,6 +60,9 @@ public protocol SECSMessageSendable {
     ///   - `SECSSendError`: if send failed.
     func reply(primaryMessage: SECSMessage, smlMessage: SMLMessage) async throws
     
+    /// GEM
+    var gem: GEM { get }
+
 }
 
 public extension SECSMessageSendable {
