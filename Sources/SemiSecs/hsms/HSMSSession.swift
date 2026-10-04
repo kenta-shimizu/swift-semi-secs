@@ -68,7 +68,7 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     
     // MARK: - let
     
-    public let gem = GEM()
+    private let _gem = GEM()
     internal let connectionAndState = NWConnectionAndHSMSConnectionState()
     private let communicatableNotifier = StateUpdateNotifier<Bool>(state: false)
     internal let (receiveHSMSMessageStream, receiveHSMSMessageCotinuation) = AsyncStream.makeStream(of: HSMSMessage.self)
@@ -94,11 +94,11 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
         self.hsmsSessionId = nil
         self.isEquipment = nil
         
-        self.gem.communicator = self
-        self.gem.deviceId = { [weak self] in
+        self._gem.communicator = self
+        self._gem.deviceId = { [weak self] in
             return self!.hsmsSessionId!()
         }
-        self.gem.isEquipment = { [weak self] in
+        self._gem.isEquipment = { [weak self] in
             return self!.isEquipment!()
         }
         
@@ -138,7 +138,12 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     internal func shutdown() async {
         self.hsmsMessageBuilder = nil
         self.hsmsMessageTransactor = nil
+        
+        self._gem.communicator = nil
+        self._gem.deviceId = nil
+        self._gem.isEquipment = nil
         self._didUpdateHSMSConnectionState = nil
+        
         self._didUpdateCommunicationState = nil
         self._didReceivePrimaryDataSECSMessage = nil
         
@@ -362,6 +367,12 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
         catch {
             Logger.communicator.error("\(error)")
             throw error
+        }
+    }
+    
+    public var gem: GEM {
+        get {
+            return self._gem
         }
     }
     
