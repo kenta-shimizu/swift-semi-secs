@@ -6,7 +6,7 @@
 //
 
 /// Send SECS-Message
-public protocol SECSMessageSendable {
+public protocol SECSMessageSendable: AnyObject {
     
     /// Send SECS message and await reponse message.
     ///

@@ -8,7 +8,7 @@
 import Network
 
 /// Receivable HSMSMessage.
-public protocol HSMSMessageReceivable {
+public protocol HSMSMessageReceivable: AnyObject {
     
     /// Whole HSMSMessage receive.
     var didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? { get set }

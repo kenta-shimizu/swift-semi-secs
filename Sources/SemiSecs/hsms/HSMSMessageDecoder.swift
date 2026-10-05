@@ -8,7 +8,7 @@
 import Foundation
 
 /// HSMS Message decordable
-public protocol HSMSMessageDecodable {
+public protocol HSMSMessageDecodable: AnyObject {
     
     /// Decode Data to HSMSMessage.
     ///

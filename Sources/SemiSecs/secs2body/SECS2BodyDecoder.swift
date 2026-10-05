@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol SECS2BodyDecodable {
+public protocol SECS2BodyDecodable: AnyObject {
     
     @discardableResult
     func decode(_ data: Data) -> SECS2Body?
