@@ -37,7 +37,7 @@ public enum SMLMessageParseError: Error, Equatable, Sendable {
 }
 
 /// SMLMessageParsable
-public protocol SMLMessageParsable {
+public protocol SMLMessageParsable: AnyObject {
     
     /// Returns SMLMessageSECS2BodyParseer.
     ///

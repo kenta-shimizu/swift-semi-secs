@@ -8,7 +8,7 @@
 import Foundation
 
 /// HSMS Message buildable
-public protocol HSMSMessageBuildable {
+public protocol HSMSMessageBuildable: AnyObject {
     
     /// Build HSMSMessage
     ///

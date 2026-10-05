@@ -6,7 +6,7 @@
 //
 
 /// Receivable Primary-Data-Message.
-public protocol SECSMessageReceivable {
+public protocol SECSMessageReceivable: AnyObject {
     
     /// Primary-Data-Message receive.
     var didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? { get set }

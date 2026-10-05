@@ -8,7 +8,7 @@
 import Foundation
 
 /// SECS-Communicatable detectable.
-public protocol SECSCommunicatingDetectable {
+public protocol SECSCommunicatingDetectable: AnyObject {
     
     /// Communicating update handler.
     var didUpdateCommunicationState: ((Bool) -> Void)? { get set }

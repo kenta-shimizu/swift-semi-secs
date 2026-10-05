@@ -161,7 +161,7 @@ public protocol SECSCommunicatorConfig: Sendable {
     
 }
 
-public protocol SECSCommunicator {
+public protocol SECSCommunicator: AnyObject {
     
     /// start communicator
     ///
