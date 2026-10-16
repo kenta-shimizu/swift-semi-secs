@@ -181,7 +181,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s2f34(primaryMessage: SECSMessage, drack: DRACK) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 2, function: 34, wbit: false, secs2Body: SECS2Body(binary: Data([drack.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 2, function: 34, wbit: false, secs2Body: SECS2Body(binary: Data([drack.uint8Value])))
     }
     
     /// S2F36 Link Event Report Acknowledge
@@ -199,7 +199,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s2f36(primaryMessage: SECSMessage, lrack: LRACK) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 2, function: 36, wbit: false, secs2Body: SECS2Body(binary: Data([lrack.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 2, function: 36, wbit: false, secs2Body: SECS2Body(binary: Data([lrack.uint8Value])))
     }
     
     /// S2F38 Enable/Disable Event Report Acknowledge
@@ -217,7 +217,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s2f38(primaryMessage: SECSMessage, erack: ERACK) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 2, function: 38, wbit: false, secs2Body: SECS2Body(binary: Data([erack.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 2, function: 38, wbit: false, secs2Body: SECS2Body(binary: Data([erack.uint8Value])))
     }
 
 }

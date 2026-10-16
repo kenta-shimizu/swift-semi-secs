@@ -114,7 +114,7 @@ extension GEM {
     ///   - `GEMError`: if unexpected response.
     @discardableResult
     public func s1f1() async throws -> (mdln: String?, softrev: String?) {
-        guard let s1f2 = try await self.communicator?.send(stream: 1, function: 1, wbit: true) else {
+        guard let s1f2 = try await self.communicator.send(stream: 1, function: 1, wbit: true) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s1f2, stream: 1, function: 2)
@@ -170,7 +170,7 @@ extension GEM {
     }
     
     private func s1f2Inner(primaryMessage: any SECSMessage, secs2Body: SECS2Body) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 1, function: 2, wbit: false, secs2Body: secs2Body)
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 1, function: 2, wbit: false, secs2Body: secs2Body)
     }
     
     /// S1F15 Request OFF-LINE
@@ -187,7 +187,7 @@ extension GEM {
     ///   - `SECSWaitReplyError`: if wait reply failed.
     ///   - `GEMError`: if unexpected response.
     public func s1f15() async throws -> OFLACK {
-        guard let s1f16 = try await self.communicator?.send(stream: 1, function: 15, wbit: true) else {
+        guard let s1f16 = try await self.communicator.send(stream: 1, function: 15, wbit: true) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s1f16, stream: 1, function: 16)
@@ -214,7 +214,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s1f16(primaryMessage: SECSMessage, oflack: OFLACK) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 1, function: 16, wbit: false, secs2Body: SECS2Body(binary: Data([oflack.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 1, function: 16, wbit: false, secs2Body: SECS2Body(binary: Data([oflack.uint8Value])))
     }
     
     /// S1F17 Request ON-LINE
@@ -231,7 +231,7 @@ extension GEM {
     ///   - `SECSWaitReplyError`: if wait reply failed.
     ///   - `GEMError`: if unexpected response.
     public func s1f17() async throws -> ONLACK {
-        guard let s1f18 = try await self.communicator?.send(stream: 1, function: 17, wbit: true) else {
+        guard let s1f18 = try await self.communicator.send(stream: 1, function: 17, wbit: true) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s1f18, stream: 1, function: 18)
@@ -258,7 +258,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s1f18(primaryMessage: SECSMessage, onlack: ONLACK) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 1, function: 18, wbit: false, secs2Body: SECS2Body(binary: Data([onlack.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 1, function: 18, wbit: false, secs2Body: SECS2Body(binary: Data([onlack.uint8Value])))
     }
     
 }

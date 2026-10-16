@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Synchronization
 
 public protocol SECSError: Error, CustomStringConvertible, CustomDebugStringConvertible {
 }
@@ -170,70 +171,5 @@ public protocol SECSCommunicator: AnyObject {
     
     /// shutdown communicator.
     func shutdown()
-    
-}
-
-public enum SECSCommunicatorStartAndShutdownError: SECSCommunicatorError {
-    
-    case alreadyStarted
-    case alreadyShutdown
-    
-    public var description: String {
-        let type = String(describing: type(of: self))
-        
-        switch self {
-        case .alreadyStarted:
-            return "\(type).alreadyStarted"
-            
-        case .alreadyShutdown:
-            return "\(type).alreadyShutdown"
-        }
-    }
-    
-    public var debugDescription: String {
-        return self.description;
-    }
-}
-
-/// StartAndShutdonw marking.
-internal final class StartAndShutdown: Sendable {
-    
-    private let lockQueue = DispatchQueue(label: "StartAndShutdown")
-    private nonisolated(unsafe) var started: Bool
-    private nonisolated(unsafe) var shutdowned: Bool
-    
-    internal init() {
-        self.started = false
-        self.shutdowned = false
-    }
-    
-    /// Mark start, throws if already started or shutdown.
-    ///
-    /// - Throws:
-    ///   - `SECSCommunicatorStartAndShutdownError.alreadyShutdowned`: if already shutdown.
-    ///   - `SECSCommunicatorStartAndShutdownError.alreadyStarted`:  if already started.
-    internal func start() throws {
-        try lockQueue.sync {
-            guard self.shutdowned == false else {
-                throw SECSCommunicatorStartAndShutdownError.alreadyShutdown
-            }
-            guard self.started == false else {
-                throw SECSCommunicatorStartAndShutdownError.alreadyStarted
-            }
-            self.started = true
-        }
-    }
-    
-    /// Mark shutdown, returns true if already shutdown, otherwise false.
-    ///
-    /// - Returns: true if already shutdown, otherwise false.
-    @discardableResult
-    internal func shutdown() -> Bool {
-        lockQueue.sync {
-            let prev = self.shutdowned
-            self.shutdowned = true
-            return prev
-        }
-    }
     
 }

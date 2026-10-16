@@ -7,21 +7,27 @@
 
 import Foundation
 import Network
+import Synchronization
 
 internal final class HSMSMessagePipeline: Sendable {
     
     private let (byteStream, byteContinuation) = AsyncStream.makeStream(of: UInt8.self)
     
     private let connection: NWConnection
-    internal nonisolated(unsafe) var timeoutT8: (@Sendable () -> Duration)?
     
     internal init(connection: NWConnection) {
         self.connection = connection
-        self.timeoutT8 = nil
     }
     
     internal func shutdown() {
         self.byteContinuation.finish()
+    }
+    
+    private let _timeoutT8 = Mutex<(@Sendable () -> Duration)?>(nil)
+    
+    internal var timeoutT8: (@Sendable () -> Duration)? {
+        get { self._timeoutT8.withLock { $0 } }
+        set { self._timeoutT8.withLock { $0 = newValue } }
     }
     
     internal func yield(data: Data) {
@@ -58,7 +64,10 @@ internal final class HSMSMessagePipeline: Sendable {
     }
     
     private func pollByte() async throws -> UInt8 {
-        guard let result = try await self.byteStream.poll(timeout: self.timeoutT8!()) else {
+        guard let timeoutT8 = self.timeoutT8?() else {
+            fatalError("timeoutT8 unset")
+        }
+        guard let result = try await self.byteStream.poll(timeout: timeoutT8) else {
             throw HSMSReceiveError.timeoutT8;
         }
         return result;

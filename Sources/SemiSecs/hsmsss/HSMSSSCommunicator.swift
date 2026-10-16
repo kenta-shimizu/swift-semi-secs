@@ -8,6 +8,7 @@
 import Foundation
 import os
 import Network
+import Synchronization
 
 /// HSMS-SS-Communicator
 public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SECSMessageReceivable, HSMSConnectionStateDetectable, Sendable {
@@ -141,10 +142,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     // MARK: - var
     
-    private nonisolated(unsafe) var _didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
-    private nonisolated(unsafe) var _didSendWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)?
-    private nonisolated(unsafe) var _newNetworkEvent: ((HSMSNetworkEvent) -> Void)?
-    
     /// Config
     public nonisolated(unsafe) var config = HSMSSSCommunicatorConfig()
     
@@ -176,10 +173,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         self.session.hsmsMessageTransactor = { [weak self] in
             return self!.transactor
         }
-        
-        self._didReceiveWholeHSMSMessage = nil
-        self._didSendWholeHSMSMessage = nil
-        self._newNetworkEvent = nil
     }
     
     deinit {
@@ -189,8 +182,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     /// Mark start, throws if already started or shutdown.
     ///
     /// - Throws:
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyShutdowned: if already shutdown.
-    ///   - SECSCommunicatorStartAndShutdownError.alreadyStarted:  if already started.
+    ///   - `StartAndShutdownError.alreadyShutdowned: if already shutdown.
+    ///   - `StartAndShutdownError.alreadyStarted:  if already started.
     public func start() throws {
         try self.start(queue: DispatchQueue(label: "defaultDispatchQueueLabel"))
     }
@@ -200,8 +193,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     /// - Parameters:
     ///   - queue: the DispatchQueue
     /// - Throws:
-    ///   - `SECSCommunicatorStartAndShutdownError.alreadyShutdowned`: if already shutdown.
-    ///   - `SECSCommunicatorStartAndShutdownError.alreadyStarted`:  if already started.
+    ///   - `StartAndShutdownError.alreadyShutdowned`: if already shutdown.
+    ///   - `StartAndShutdownError.alreadyStarted`:  if already started.
     public func start(queue: DispatchQueue) throws {
         try self.startAndShutdown.start()
         
@@ -209,15 +202,15 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         queue.async { [weak self] in
             guard let self = self else { return }
             Task {
-                let stream = await self.transactor.willSendMessageStream()
+                let stream = self.transactor.willSendMessageStream()
                 for await pair in stream {
                     pair.connection.send(content: pair.message.data, contentContext: .defaultMessage, isComplete: true, completion: .contentProcessed({ error in
                         Task {
-                            await self.transactor.yield(sendedMessage: pair.message, connection: pair.connection, error: error)
+                            self.transactor.yield(sendedMessage: pair.message, connection: pair.connection, error: error)
                             if let error = error {
                                 Logger.nwConnection.error("\(error)")
                             } else {
-                                self._didSendWholeHSMSMessage?(pair.message, pair.connection)
+                                self._didSendWholeHSMSMessage.accept(pair.message, pair.connection)
                                 Logger.sendedHSMSMessage.notice("\(String(describing: pair.message))")
                             }
                         }
@@ -231,7 +224,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         // receive Primary-HSMS-Message and NWConnection pair pass to HSMSSession
         Task { [weak self] in
             guard let self = self else { return }
-            let stream = await self.transactor.didReceiveMessageStream()
+            let stream = self.transactor.didReceiveMessageStream()
             for await pair in stream {
                 switch self.config.connectionMode {
                 case .active:
@@ -247,7 +240,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         Task { [weak self] in
             guard let self = self else { return }
             for await event in self.networkEventStream {
-                self._newNetworkEvent?(event)
+                self._newNetworkEvent.accept(event)
             }
             
             Logger.communicator.debug("HSMS Network Event finished.")
@@ -260,14 +253,14 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             Task {
                 let stream = self.receiveWholeHSMSMessageStream
                 for await pair in stream {
-                    self._didReceiveWholeHSMSMessage?(pair.message, pair.connection)
+                    self._didReceiveWholeHSMSMessage.accept(pair.message, pair.connection)
                     Logger.receiveHSMSMessage.notice("\(String(describing: pair.message))")
                 }
                 
                 Logger.communicator.debug("receiveWholeHSMSMessageStream finished.")
             }
             
-            await self.session.start()
+            self.session.start()
             
             let task = Task { [weak self] in
                 guard let self = self else { return }
@@ -319,10 +312,9 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             
             self.networkEventContinuation.yield(.shutdown)
             self.networkEventContinuation.finish()
-            self._didReceiveWholeHSMSMessage = nil
             self.receiveWholeHSMSMessageContinuation.finish()
-            await self.transactor.shutdown()
-            await self.session.shutdown()
+            self.transactor.shutdown()
+            self.session.shutdown()
             
             Logger.communicator.debug("start-task finished.")
         }
@@ -354,21 +346,13 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     // MARK: - HSMSConnectionStateDetectable
     
     public var didUpdateCommunicationState: ((Bool) -> Void)? {
-        get {
-            return self.session.didUpdateCommunicationState
-        }
-        set {
-            self.session.didUpdateCommunicationState = newValue
-        }
+        get { self.session.didUpdateCommunicationState }
+        set { self.session.didUpdateCommunicationState = newValue }
     }
     
     public var didUpdateHSMSConnectionState: ((HSMSSession.HSMSConnectionState) -> Void)? {
-        get {
-            return self.session.didUpdateHSMSConnectionState
-        }
-        set {
-            self.session.didUpdateHSMSConnectionState = newValue
-        }
+        get { self.session.didUpdateHSMSConnectionState }
+        set { self.session.didUpdateHSMSConnectionState = newValue }
     }
     
     public func until(connectionState: HSMSSession.HSMSConnectionState) async throws {
@@ -392,23 +376,17 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     // MARK: - SECSMessageReceivable
     
     public var didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? {
-        get {
-            return self.session.didReceivePrimaryDataSECSMessage
-        }
-        set {
-            self.session.didReceivePrimaryDataSECSMessage = newValue
-        }
+        get { self.session.didReceivePrimaryDataSECSMessage }
+        set { self.session.didReceivePrimaryDataSECSMessage = newValue }
     }
     
     // MARK: - HSMSMessageReceivable
     
+    private let _didReceiveWholeHSMSMessage = MutexBiConsumerWrapper<HSMSMessage, NWConnection>()
+    
     public var didReceiveWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? {
-        get {
-            return self._didReceiveWholeHSMSMessage
-        }
-        set {
-            self._didReceiveWholeHSMSMessage = newValue
-        }
+        get { self._didReceiveWholeHSMSMessage.biConsumer }
+        set { self._didReceiveWholeHSMSMessage.biConsumer = newValue }
     }
     
     // MARK: - HSMSMessageSendable
@@ -459,31 +437,25 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     }
     
     public var gem: GEM {
-        get {
-            return self.session.gem
-        }
+        get { self.session.gem }
     }
+    
+    private let _didSendWholeHSMSMessage = MutexBiConsumerWrapper<HSMSMessage, NWConnection>()
     
     /// Whole HSMSMessage send
     public var didSendWholeHSMSMessage: ((HSMSMessage, NWConnection) -> Void)? {
-        get {
-            return self._didSendWholeHSMSMessage
-        }
-        set {
-            self._didSendWholeHSMSMessage = newValue
-        }
+        get { self._didSendWholeHSMSMessage.biConsumer }
+        set { self._didSendWholeHSMSMessage.biConsumer = newValue }
     }
     
     // MARK: - NetworkEvent
     
+    private let _newNetworkEvent = MutexConsumerWrapper<HSMSNetworkEvent>()
+    
     /// newNetworkEvent
     public var newNetworkEvent: ((HSMSNetworkEvent) -> Void)? {
-        get {
-            return self._newNetworkEvent
-        }
-        set {
-            self._newNetworkEvent = newValue
-        }
+        get { self._newNetworkEvent.consumer }
+        set { self._newNetworkEvent.consumer = newValue }
     }
     
     // MARK: - Active
@@ -513,11 +485,14 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             
             self.networkEventContinuation.yield(.activeConnectSuccess(ipAddress: ipAddress, port: port))
             
-            guard await self.session.connectionAndState.set(connection: connection, state: .notSelected) else {
+            let setConnectionAndStateResult = self.session.connectionAndState.withLock {
+                $0.set(connection: connection, state: .notSelected)
+            }
+            guard setConnectionAndStateResult else {
                 Logger.communicator.fault("NWConnection already setted.")
                 fatalError("NWConnection already setted.")
             }
-            
+
             let linktestTimer = self.newLinktestTimer()
             
             await withTaskGroup(of: Void.self) { group in
@@ -529,8 +504,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         switch result {
                         case .success(let pair):
                             self.receiveWholeHSMSMessageContinuation.yield(pair)
-                            await self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
-                            await linktestTimer.reset()
+                            self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
+                            linktestTimer.reset()
                         case .failure(let error):
                             Logger.communicator.error("\(error)")
                         }
@@ -566,7 +541,9 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         switch selectStatus {
                         case .success, .actived:
                             // select success
-                            await self.session.connectionAndState.set(state: .selected)
+                            self.session.connectionAndState.withLock {
+                                $0.set(state: .selected)
+                            }
                         default:
                             // select failed
                             return
@@ -577,14 +554,17 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             guard let self = self else { return }
                             Task {
                                 guard await self.linktest() else {
-                                    await self.session.connectionAndState.unset()
+                                    self.session.connectionAndState.withLock {
+                                        $0.unset()
+                                    }
                                     return
                                 }
                             }
                         }
-                        await linktestTimer.start()
+                        linktestTimer.start()
                         
-                        try await self.session.connectionAndState.hsmsConnectionStateUpdateNotifier.untilNot(.selected)
+                        let notifier = self.session.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier }
+                        try await notifier.untilNot(.selected)
                     }
                     catch is CancellationError {
                         // ignore
@@ -596,9 +576,11 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 
                 await group.next()
                 group.cancelAll()
-                await linktestTimer.shutdown()
+                linktestTimer.shutdown()
                 
-                await self.session.connectionAndState.unset()
+                self.session.connectionAndState.withLock {
+                    $0.unset()
+                }
             }
         }
         catch let error as CancellationError {
@@ -728,7 +710,10 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                                 return
                             }
                             
-                            guard await self.session.connectionAndState.set(connection: pair.connection, state: .notSelected, .selected) else {
+                            let setConnectionAndStateResult = self.session.connectionAndState.withLock {
+                                $0.set(connection: pair.connection, state: .notSelected, .selected)
+                            }
+                            guard setConnectionAndStateResult else {
                                 Logger.communicator.info("NWConnection already setted.")
                                 
                                 let responseMessage = self.messageBuilder.buildSelectResponse(selectRequest: pair.message, selectStatus: .alreadyUsed)
@@ -741,7 +726,9 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                                 try await self.session.replySelectResponse(selectRequest: pair.message, selectStatus: .success)
                             }
                             catch {
-                                await self.session.connectionAndState.unset()
+                                self.session.connectionAndState.withLock {
+                                    $0.unset()
+                                }
                                 throw error
                             }
                             
@@ -768,8 +755,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                                 switch result {
                                 case .success(let pair):
                                     self.receiveWholeHSMSMessageContinuation.yield(pair)
-                                    await self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
-                                    await linktestTimer.reset()
+                                    self.transactor.yield(receiveMessage: pair.message, connection: pair.connection)
+                                    linktestTimer.reset()
                                 case .failure(let error):
                                     Logger.communicator.error("\(error)")
                                 }
@@ -786,14 +773,19 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                                     guard let self = self else { return }
                                     Task {
                                         guard await self.linktest() else {
-                                            await self.session.connectionAndState.unset()
+                                            self.session.connectionAndState.withLock {
+                                                $0.unset()
+                                            }
                                             return
                                         }
                                     }
                                 }
-                                await linktestTimer.start()
+                                linktestTimer.start()
                                 
-                                try await self.session.connectionAndState.hsmsConnectionStateUpdateNotifier.until(.notConnected)
+                                let notifier = self.session.connectionAndState.withLock {
+                                    $0.hsmsConnectionStateUpdateNotifier
+                                }
+                                try await notifier.until(.notConnected)
                             }
                             catch is CancellationError {
                                 // ignore
@@ -805,9 +797,11 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         
                         await innerGroup.next()
                         innerGroup.cancelAll()
-                        await linktestTimer.shutdown()
+                        linktestTimer.shutdown()
                         
-                        await self.session.connectionAndState.unset()
+                        self.session.connectionAndState.withLock {
+                            $0.unset()
+                        }
                     }
                 }
                 

@@ -6,52 +6,89 @@
 //
 
 import Foundation
+import Synchronization
 
-fileprivate struct ContinuationWrapper<T: Equatable & Sendable> {
+internal final class StateUpdateNotifier<T: Equatable & Sendable>: Sendable {
     
-    fileprivate let uuid = UUID()
-    fileprivate let continuation: AsyncStream<T>.Continuation
-    
-    fileprivate init(_ continuation: AsyncStream<T>.Continuation) {
-        self.continuation = continuation
-    }
-}
-
-internal actor StateUpdateNotifier<T: Equatable & Sendable> {
-    
-    private var shutdowned: Bool
-    private let (stream, continuation) = AsyncStream.makeStream(of: T.self)
-    internal var lastState: T
-    private var continuationWrappers: [ContinuationWrapper<T>]
-    
-    internal init(state: T) {
-        self.shutdowned = false
-        self.lastState = state
-        self.continuation.yield(state)
-        self.continuationWrappers = []
-    }
-    
-    internal func shutdown() async {
-        self.shutdowned = true
-        self.continuation.finish()
-        for wrapper in self.continuationWrappers {
-            wrapper.continuation.finish()
+    private struct ContinuationWrapper: Sendable {
+        
+        internal let uuid = UUID()
+        internal let continuation: AsyncStream<T>.Continuation
+        
+        internal init(_ continuation: AsyncStream<T>.Continuation) {
+            self.continuation = continuation
         }
     }
     
-    internal func yield(_ state: T) async {
-        guard self.shutdowned == false else { return }
-        if state != self.lastState {
+    private struct Inner: Sendable {
+        internal var shutdown: Bool
+        internal var lastState: T
+        internal let stream: AsyncStream<T>
+        internal let continuation: AsyncStream<T>.Continuation
+        internal var continuationWrappers: [ContinuationWrapper] = []
+        
+        internal init(state: T) {
+            self.shutdown = false
             self.lastState = state
+            (self.stream, self.continuation) = AsyncStream.makeStream(of: T.self)
             self.continuation.yield(state)
-            for wrapper in self.continuationWrappers {
-                wrapper.continuation.yield(state)
+        }
+        
+        internal mutating func yield(_ state: T) {
+            guard self.shutdown == false else { return }
+            if state != self.lastState {
+                self.lastState = state
+                self.continuation.yield(state)
+                for wrapper in self.continuationWrappers {
+                    wrapper.continuation.yield(state)
+                }
             }
         }
+        
+        internal mutating func finish() {
+            guard self.shutdown == false else { return }
+            self.shutdown = true
+            self.continuation.finish()
+            for wrapper in self.continuationWrappers {
+                wrapper.continuation.finish()
+            }
+            self.continuationWrappers = []
+        }
+        
+        internal mutating func append(_ wrapper: ContinuationWrapper) throws {
+            guard self.shutdown == false else {
+                throw CancellationError()
+            }
+            self.continuationWrappers.append(wrapper)
+            wrapper.continuation.yield(self.lastState)
+        }
+        
+        internal mutating func remove(_ wrapper: ContinuationWrapper) {
+            self.continuationWrappers.removeAll(where: { $0.uuid == wrapper.uuid })
+        }
+        
     }
     
-    internal nonisolated func stateUpdateStream() -> AsyncStream<T> {
-        return self.stream
+    private let inner: Mutex<Inner>
+    
+    internal init(state: T) {
+        self.inner = Mutex<Inner>(Inner(state: state))
+    }
+    
+    internal var lastState: T {
+        get { self.inner.withLock { $0.lastState } }
+    }
+    
+    internal func shutdown() {
+        self.inner.withLock { $0.finish() }
+    }
+    
+    internal func yield(_ state: T) {
+        self.inner.withLock { $0.yield(state) }
+    }
+    
+    internal func stateUpdateStream() -> AsyncStream<T> {
+        return self.inner.withLock { $0.stream }
     }
     
     /// Wait until state changed.
@@ -101,27 +138,18 @@ internal actor StateUpdateNotifier<T: Equatable & Sendable> {
     }
     
     private func until(predicate: (T) -> Bool) async throws {
-        guard self.shutdowned == false else {
-            throw CancellationError()
-        }
-        if predicate(self.lastState) { return }
         let (stream, continuation) = AsyncStream.makeStream(of: T.self)
         let wrapper = ContinuationWrapper(continuation)
-        self.continuationWrappers.append(wrapper)
-        do {
-            while true {
-                let newState = try await stream.take()
-                if predicate(newState) {
-                    break
-                }
-            }
+        defer {
             continuation.finish()
-            self.continuationWrappers.removeAll(where: { $0.uuid == wrapper.uuid })
+            self.inner.withLock { $0.remove(wrapper) }
         }
-        catch {
-            continuation.finish()
-            self.continuationWrappers.removeAll(where: { $0.uuid == wrapper.uuid })
-            throw error
+        try self.inner.withLock { try $0.append(wrapper) }
+        while true {
+            let newState = try await stream.take()
+            if predicate(newState) {
+                break
+            }
         }
     }
     

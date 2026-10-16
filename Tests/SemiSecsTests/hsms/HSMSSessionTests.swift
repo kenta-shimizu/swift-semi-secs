@@ -28,11 +28,11 @@ struct HSMSSessionTests {
         session.hsmsMessageBuilder = { return messageBuilder }
         session.hsmsMessageTransactor = { return transactor }
         
-        await session.start()
+        session.start()
         
         #expect(session.sessionId == sessionId)
         
-        await session.shutdown()
+        session.shutdown()
     }
     
     // tests

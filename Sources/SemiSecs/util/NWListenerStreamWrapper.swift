@@ -7,6 +7,7 @@
 
 import Foundation
 import Network
+import Synchronization
 
 internal final class NWListenerStreamWrapper: Sendable {
     
@@ -23,11 +24,10 @@ internal final class NWListenerStreamWrapper: Sendable {
     
     private let (stream, continuation) = AsyncStream.makeStream(of: Result<NWConnectionAndDispatchQueue, Error>.self)
     private let listener: NWListener
-    private nonisolated(unsafe) var connections: [NWConnection]
+    private let connections = Mutex<[NWConnection]>([])
     
     internal init(using: NWParameters, on: NWEndpoint.Port) throws {
         self.listener = try NWListener(using: using, on: on)
-        self.connections = []
     }
     
     /// Start NWListener.
@@ -59,10 +59,12 @@ internal final class NWListenerStreamWrapper: Sendable {
             
             self.continuation.yield(.success(NWConnectionAndDispatchQueue(connection: connection, queue: queue)))
             
-            // cleanup cancelled.
-            self.connections.removeAll { $0.state == .cancelled }
-            // append
-            self.connections.append(connection)
+            self.connections.withLock {
+                // cleanup cancelled.
+                $0.removeAll { $0.state == .cancelled }
+                // append
+                $0.append(connection)
+            }
         }
         
         self.listener.start(queue: queue)
@@ -72,12 +74,14 @@ internal final class NWListenerStreamWrapper: Sendable {
     internal func cancel() {
         self.listener.cancel()
         self.continuation.finish()
-        for connection in self.connections {
-            if connection.state != .cancelled {
-                connection.cancel()
+        self.connections.withLock {
+            for connection in $0 {
+                if connection.state != .cancelled {
+                    connection.cancel()
+                }
             }
+            $0.removeAll()
         }
-        self.connections.removeAll()
     }
     
     /// Returns NWConnection and DispatchQueue Result AsyncStream

@@ -47,31 +47,31 @@ struct HSMSMessageTransactorTests {
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
             let builder = equipMessageBuilder()
-            let stream = await transactor.willSendMessageStream()
+            let stream = transactor.willSendMessageStream()
             for await value in stream {
                 let message = value.message
                 let connection = value.connection
                 
-                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
+                transactor.yield(sendedMessage: message, connection: connection, error: nil)
                 
                 switch message.messageType {
                 case .data:
                     if message.wbit {
                         let response = builder.buildResponseData(primaryMessage: message, stream: message.stream, function: message.function  + 1, wbit: false)
-                        await transactor.yield(receiveMessage: response, connection: connection)
+                        transactor.yield(receiveMessage: response, connection: connection)
                     }
                     
                 case .selectRequest:
                     let response = builder.buildSelectResponse(selectRequest: message, selectStatus: .success)
-                    await transactor.yield(receiveMessage: response, connection: connection)
+                    transactor.yield(receiveMessage: response, connection: connection)
 
                 case .deselectRequest:
                     let response = builder.buildDeselectResponse(deselectRequest: message, deselectStatus: .success)
-                    await transactor.yield(receiveMessage: response, connection: connection)
+                    transactor.yield(receiveMessage: response, connection: connection)
 
                 case .linktestRequest:
                     let response = builder.buildLinktestResponse(linktestRequest: message)
-                    await transactor.yield(receiveMessage: response, connection: connection)
+                    transactor.yield(receiveMessage: response, connection: connection)
                     
                 default:
                     // nothing
@@ -82,7 +82,7 @@ struct HSMSMessageTransactorTests {
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.didReceiveMessageStream()
+            let stream = transactor.didReceiveMessageStream()
             for await _ in stream {
                 Issue.record("did-receive error")
             }
@@ -127,11 +127,11 @@ struct HSMSMessageTransactorTests {
             #expect(linktestResponse?.messageType == .linktestResponse)
             
             // finally
-            await transactor.shutdown()
+            transactor.shutdown()
         }
         catch {
             // error finally
-            await transactor.shutdown()
+            transactor.shutdown()
             
             Issue.record("error finally")
         }
@@ -143,18 +143,18 @@ struct HSMSMessageTransactorTests {
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.willSendMessageStream()
+            let stream = transactor.willSendMessageStream()
             for await value in stream {
                 let message = value.message
                 let connection = value.connection
                 
-                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
+                transactor.yield(sendedMessage: message, connection: connection, error: nil)
             }
         }
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.didReceiveMessageStream()
+            let stream = transactor.didReceiveMessageStream()
             for await _ in stream {
                 Issue.record("did-receive error")
             }
@@ -196,11 +196,11 @@ struct HSMSMessageTransactorTests {
             try await transactor.send(message: separateRequest, connection: connection)
             
             // finally
-            await transactor.shutdown()
+            transactor.shutdown()
         }
         catch {
             // error finally
-            await transactor.shutdown()
+            transactor.shutdown()
             
             Issue.record("error finally")
         }
@@ -212,7 +212,7 @@ struct HSMSMessageTransactorTests {
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.willSendMessageStream()
+            let stream = transactor.willSendMessageStream()
             for await _ in stream {
                 Issue.record("did-receive error")
             }
@@ -220,7 +220,7 @@ struct HSMSMessageTransactorTests {
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.didReceiveMessageStream()
+            let stream = transactor.didReceiveMessageStream()
             
             do {
                 #expect(try await stream.take().message.messageType == .data)
@@ -240,26 +240,26 @@ struct HSMSMessageTransactorTests {
         
         // data
         let dataRequest = builder.buildPrimaryData(sessionId: sessionId, stream: 1, function: 13, wbit: true)
-        await transactor.yield(receiveMessage: dataRequest, connection: connection)
+        transactor.yield(receiveMessage: dataRequest, connection: connection)
         
         // select.req
         let selectRequest = builder.buildSelectRequest(sessionId: sessionId)
-        await transactor.yield(receiveMessage: selectRequest, connection: connection)
+        transactor.yield(receiveMessage: selectRequest, connection: connection)
         
         // deselect.req
         let deselectRequest = builder.buildDeselectRequest(sessionId: sessionId)
-        await transactor.yield(receiveMessage: deselectRequest, connection: connection)
+        transactor.yield(receiveMessage: deselectRequest, connection: connection)
         
         // linktest.req
         let linktestRequest = builder.buildLinktestRequest(sessionId: sessionId)
-        await transactor.yield(receiveMessage: linktestRequest, connection: connection)
+        transactor.yield(receiveMessage: linktestRequest, connection: connection)
         
         // separate.req
         let separateRequest = builder.buildSeparateRequest(sessionId: sessionId)
-        await transactor.yield(receiveMessage: separateRequest, connection: connection)
+        transactor.yield(receiveMessage: separateRequest, connection: connection)
         
         // finally
-        await transactor.shutdown()
+        transactor.shutdown()
     }
     
     @Test func testTimeoutT3() async throws {
@@ -268,18 +268,18 @@ struct HSMSMessageTransactorTests {
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.willSendMessageStream()
+            let stream = transactor.willSendMessageStream()
             for await value in stream {
                 let message = value.message
                 let connection = value.connection
                 
-                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
+                transactor.yield(sendedMessage: message, connection: connection, error: nil)
             }
         }
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.didReceiveMessageStream()
+            let stream = transactor.didReceiveMessageStream()
             for await _ in stream {
             }
         }
@@ -296,16 +296,16 @@ struct HSMSMessageTransactorTests {
             Issue.record("timeoutT3-failed")
             
             // finally
-            await transactor.shutdown()
+            transactor.shutdown()
         }
         catch HSMSWaitReplyError.timeoutT3(_, _) {
             // error finally
-            await transactor.shutdown()
+            transactor.shutdown()
             // success
         }
         catch {
             // error finally
-            await transactor.shutdown()
+            transactor.shutdown()
             
             Issue.record("error finally")
         }
@@ -317,18 +317,18 @@ struct HSMSMessageTransactorTests {
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.willSendMessageStream()
+            let stream = transactor.willSendMessageStream()
             for await value in stream {
                 let message = value.message
                 let connection = value.connection
                 
-                await transactor.yield(sendedMessage: message, connection: connection, error: nil)
+                transactor.yield(sendedMessage: message, connection: connection, error: nil)
             }
         }
         
         Task { [weak transactor] in
             guard let transactor = transactor else { return }
-            let stream = await transactor.didReceiveMessageStream()
+            let stream = transactor.didReceiveMessageStream()
             for await _ in stream {
             }
         }
@@ -377,7 +377,7 @@ struct HSMSMessageTransactorTests {
             Issue.record("error finally")
         }
         
-        await transactor.shutdown()
+        transactor.shutdown()
     }
     
     // tests

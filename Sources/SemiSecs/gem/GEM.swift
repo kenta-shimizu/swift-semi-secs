@@ -6,15 +6,45 @@
 //
 
 import Foundation
+import Synchronization
 
 public final class GEM: Sendable {
     
-    public internal(set) nonisolated(unsafe) var communicator: (any SECSMessageSendable)?
-    public internal(set) nonisolated(unsafe) var deviceId: (() -> UInt16)?
-    public internal(set) nonisolated(unsafe) var isEquipment: (() -> Bool)?
-    
     internal init() {
-        self.communicator = nil
+        // Nothing
+    }
+    
+    private let __gem = Mutex<(@Sendable () -> any SECSMessageSendable)?>(nil)
+    
+    internal var _communicator: (@Sendable () -> any SECSMessageSendable)? {
+        get { self.__gem.withLock { $0 } }
+        set { self.__gem.withLock { $0 = newValue } }
+    }
+    
+    internal var communicator: any SECSMessageSendable {
+        get { self._communicator!() }
+    }
+    
+    private let __deviceId = Mutex<(@Sendable () -> UInt16)?>(nil)
+    
+    internal var _deviceId: (@Sendable () -> UInt16)? {
+        get { self.__deviceId.withLock { $0 } }
+        set { self.__deviceId.withLock { $0 = newValue } }
+    }
+    
+    public var deviceId: UInt16 {
+        get { self._deviceId!() }
+    }
+    
+    private let __isEquipment = Mutex<(@Sendable () -> Bool)?>(nil)
+    
+    internal var _isEquipment: (@Sendable () -> Bool)? {
+        get { self.__isEquipment.withLock { $0 } }
+        set { self.__isEquipment.withLock { $0 = newValue } }
+    }
+    
+    public var isEquipment: Bool {
+        get { self._isEquipment!() }
     }
     
     /// GEMError
@@ -52,13 +82,12 @@ public final class GEM: Sendable {
         }
         
         // check Device-ID.
-        if let deviceId = self.deviceId?() {
-            let b0 = UInt8(deviceId >> 8)
-            let b1 = UInt8(deviceId & 0x00FF)
-            guard (responseMessage.header10Bytes[0] & 0x7F) == b0 &&
-                    responseMessage.header10Bytes[1] == b1 else {
-                throw GEMError.unrecognizedDeviceID(responseMesage: responseMessage)
-            }
+        let deviceId = self.deviceId
+        let b0 = UInt8(deviceId >> 8)
+        let b1 = UInt8(deviceId & 0x00FF)
+        guard (responseMessage.header10Bytes[0] & 0x7F) == b0 &&
+                responseMessage.header10Bytes[1] == b1 else {
+            throw GEMError.unrecognizedDeviceID(responseMesage: responseMessage)
         }
         
         // check Stream Function.

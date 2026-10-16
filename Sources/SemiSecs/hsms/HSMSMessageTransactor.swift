@@ -7,38 +7,51 @@
 
 import Foundation
 import Network
+import Synchronization
 
-internal actor HSMSMessageTransactor {
+internal final class HSMSMessageTransactor: Sendable {
     
     private let (willSendStream, willSendContinuation) = AsyncStream.makeStream(of: HSMSMessageAndNWConnection.self)
     private let (didReceiveStream, didReceiveContinuation) = AsyncStream.makeStream(of: HSMSMessageAndNWConnection.self)
     
-    private var didSendMap: [HSMSMessageAndNWConnection: AsyncStream<Result<HSMSMessage, Error>>.Continuation]
-    private var didReceiveMap: [HSMSMessageAndNWConnection: AsyncStream<HSMSMessage>.Continuation]
-    
-    internal nonisolated(unsafe) var timeoutT3: (@Sendable () -> Duration)?
-    internal nonisolated(unsafe) var timeoutT6: (@Sendable () -> Duration)?
+    private let didSendMap = Mutex<[HSMSMessageAndNWConnection: AsyncStream<Result<HSMSMessage, Error>>.Continuation]>([:])
+    private let didReceiveMap = Mutex<[HSMSMessageAndNWConnection: AsyncStream<HSMSMessage>.Continuation]>([:])
     
     internal init() {
-        self.timeoutT3 = nil
-        self.timeoutT6 = nil
-        self.didSendMap = [:]
-        self.didReceiveMap = [:]
+        // Nothing
     }
     
-    internal func shutdown() async {
+    internal let _timeoutT3 = Mutex<(@Sendable () -> Duration)?>(nil)
+    
+    internal var timeoutT3: (@Sendable () -> Duration)? {
+        get { self._timeoutT3.withLock { $0 } }
+        set { self._timeoutT3.withLock { $0 = newValue } }
+    }
+
+    private let _timeoutT6 = Mutex<(@Sendable () -> Duration)?>(nil)
+    
+    internal var timeoutT6: (@Sendable () -> Duration)? {
+        get { self._timeoutT6.withLock { $0 } }
+        set { self._timeoutT6.withLock { $0 = newValue } }
+    }
+    
+    internal func shutdown() {
         self.willSendContinuation.finish()
         self.didReceiveContinuation.finish()
         
-        for (_, continuation) in self.didSendMap {
-            continuation.finish()
+        self.didSendMap.withLock {
+            for (_, continuation) in $0 {
+                continuation.finish()
+            }
+            $0 = [:]
         }
-        self.didSendMap = [:]
         
-        for (_, continuation) in self.didReceiveMap {
-            continuation.finish()
+        self.didReceiveMap.withLock {
+            for (_, continuation) in $0 {
+                continuation.finish()
+            }
+            $0 = [:]
         }
-        self.didReceiveMap = [:]
     }
     
     internal func willSendMessageStream() -> AsyncStream<HSMSMessageAndNWConnection> {
@@ -66,43 +79,36 @@ internal actor HSMSMessageTransactor {
             
             let pair = HSMSMessageAndNWConnection(message: message, connection: connection)
             let (stream, continuation) = AsyncStream.makeStream(of: HSMSMessage.self)
-            self.didReceiveMap[pair] = continuation
+            
+            defer {
+                self.didReceiveMap.withLock { $0[pair] = nil }
+                continuation.finish()
+            }
+            
+            self.didReceiveMap.withLock { $0[pair] = continuation }
+            
+            try await self.send(message: message, connection: connection)
             
             do {
-                try await self.send(message: message, connection: connection)
+                // wait until receive response message in timeout.
+                guard let responseMessage = try await stream.poll(timeout: timeout) else {
+                    
+                    if message.isDataMessage {
+                        throw HSMSWaitReplyError.timeoutT3(primaryMessage: message, connection: connection)
+                    } else {
+                        throw HSMSWaitReplyError.timeoutT6(primaryMessage: message, connection: connection)
+                    }
+                }
                 
-                do {
-                    // wait until receive response message in timeout.
-                    guard let responseMessage = try await stream.poll(timeout: timeout) else {
-                        
-                        if message.isDataMessage {
-                            throw HSMSWaitReplyError.timeoutT3(primaryMessage: message, connection: connection)
-                        } else {
-                            throw HSMSWaitReplyError.timeoutT6(primaryMessage: message, connection: connection)
-                        }
-                    }
-                    
-                    // throw error if response is RejectRequest.
-                    if responseMessage.messageType == .rejectRequest {
-                        throw HSMSWaitReplyError.rejectRequest(primaryMessage: message, rejectRequestMessage: responseMessage, connection: connection)
-                    }
-                    
-                    // finally-success
-                    self.didReceiveMap[pair] = nil
-                    continuation.finish()
-                    
-                    return responseMessage
+                // throw error if response is RejectRequest.
+                if responseMessage.messageType == .rejectRequest {
+                    throw HSMSWaitReplyError.rejectRequest(primaryMessage: message, rejectRequestMessage: responseMessage, connection: connection)
                 }
-                catch is CancellationError {
-                    throw HSMSWaitReplyError.waitReplyFailedByTransactionShutdown(primaryMessage: message, connection: connection)
-                }
+                
+                return responseMessage
             }
-            catch {
-                // finally-error
-                self.didReceiveMap[pair] = nil
-                continuation.finish()
-                
-                throw error
+            catch is CancellationError {
+                throw HSMSWaitReplyError.waitReplyFailedByTransactionShutdown(primaryMessage: message, connection: connection)
             }
             
         } else {
@@ -115,73 +121,64 @@ internal actor HSMSMessageTransactor {
     internal func send(message: HSMSMessage, connection: NWConnection) async throws {
         
         let pair = HSMSMessageAndNWConnection(message: message, connection: connection)
-        
         let (stream, continuation) = AsyncStream.makeStream(of: Result<HSMSMessage, Error>.self)
         
-        self.didSendMap[pair] = continuation
+        defer {
+            self.didSendMap.withLock { $0[pair] = nil }
+            continuation.finish()
+        }
+        
+        self.didSendMap.withLock { $0[pair] = continuation }
+        
+        let yieldResult = self.willSendContinuation.yield(pair)
+        guard case .enqueued(_) = yieldResult else {
+            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: message, connection: connection)
+        }
         
         do {
-            let yieldResult = self.willSendContinuation.yield(pair)
-            guard case .enqueued(_) = yieldResult else {
-                throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: message, connection: connection)
-            }
+            // await until did-send.
+            let result = try await stream.take()
             
-            do {
-                // await until did-send.
-                let result = try await stream.take()
-                
-                switch result {
-                case .success(_):
-                    // do nothing.
-                    break
-                case .failure(_ as CancellationError):
-                    throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: message, connection: connection)
-                case .failure(let error as HSMSError):
-                    throw error
-                case .failure(let error):
-                    throw HSMSSendError.sendFailed(message: message, connection: connection, cause: error)
-                }
-            }
-            catch is CancellationError {
+            switch result {
+            case .success(_):
+                // do nothing.
+                break
+            case .failure(_ as CancellationError):
                 throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: message, connection: connection)
+            case .failure(let error as HSMSError):
+                throw error
+            case .failure(let error):
+                throw HSMSSendError.sendFailed(message: message, connection: connection, cause: error)
             }
-            
-            // finally-success
-            self.didSendMap[pair] = nil
-            continuation.finish()
         }
-        catch {
-            // finally-error
-            self.didSendMap[pair] = nil
-            continuation.finish()
-            
-            throw error
+        catch is CancellationError {
+            throw HSMSSendError.sendFailedByCommunicatorShutdowned(message: message, connection: connection)
         }
     }
     
-    internal func yield(sendedMessage: HSMSMessage, connection: NWConnection, error: Error?) async {
-        
+    internal func yield(sendedMessage: HSMSMessage, connection: NWConnection, error: Error?) {
         let pair = HSMSMessageAndNWConnection(message: sendedMessage, connection: connection)
-        
-        if let continuation = self.didSendMap[pair] {
-            if let sendError = error {
-                continuation.yield(Result.failure(sendError))
-            } else {
-                continuation.yield(Result.success(sendedMessage))
+        self.didSendMap.withLock {
+            if let continuation = $0[pair] {
+                if let sendError = error {
+                    continuation.yield(Result.failure(sendError))
+                } else {
+                    continuation.yield(Result.success(sendedMessage))
+                }
+                continuation.finish()
             }
-            continuation.finish()
         }
     }
     
-    internal func yield(receiveMessage: HSMSMessage, connection: NWConnection) async {
-        
+    internal func yield(receiveMessage: HSMSMessage, connection: NWConnection) {
         let pair = HSMSMessageAndNWConnection(message: receiveMessage, connection: connection)
-        
-        if let continuation = self.didReceiveMap[pair] {
-            continuation.yield(receiveMessage)
-            continuation.finish()
-        } else {
-            self.didReceiveContinuation.yield(pair)
+        self.didReceiveMap.withLock {
+            if let continuation = $0[pair] {
+                continuation.yield(receiveMessage)
+                continuation.finish()
+            } else {
+                self.didReceiveContinuation.yield(pair)
+            }
         }
     }
     

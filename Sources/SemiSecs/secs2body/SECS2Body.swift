@@ -570,7 +570,7 @@ fileprivate class SECS2BodyInnerBase: Sequence {
     
 }
 
-fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2BodyInnerBase{
+fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2BodyInnerBase {
     
     fileprivate let _values: [T]
     
@@ -611,7 +611,7 @@ fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2Body
     
 }
 
-fileprivate class SECS2BodyInnerDataBase: SECS2BodyInnerBase{
+fileprivate class SECS2BodyInnerDataBase: SECS2BodyInnerBase {
     
     fileprivate let _values: Data
     

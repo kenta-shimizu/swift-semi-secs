@@ -13,11 +13,12 @@ extension HSMSSession {
     
     internal func receiveAsHSMSSSActive(message: HSMSMessage, connection: NWConnection) async {
         // check equal NWConnection
-        guard let sessionConnection = await self.connectionAndState.connection else { return }
+        let sessionConnection = self.connectionAndState.withLock { $0.connection }
+        guard let sessionConnection = sessionConnection else { return }
         guard connection === sessionConnection else { return }
         
         // check state
-        let sessionState = await self.connectionAndState.hsmsConnectionStateUpdateNotifier.lastState
+        let sessionState = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier.lastState }
         guard sessionState != .notConnected else { return }
         
         do {
@@ -48,7 +49,9 @@ extension HSMSSession {
                 break
                 
             case .separateRequest:
-                await self.connectionAndState.unset()
+                self.connectionAndState.withLock {
+                    $0.unset()
+                }
                 
             default:
                 if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {
@@ -65,11 +68,12 @@ extension HSMSSession {
     
     internal func receiveAsHSMSSSPassive(message: HSMSMessage, connection: NWConnection) async {
         // check equal NWConnection
-        guard let sessionConnection = await self.connectionAndState.connection else { return }
+        let sessionConnection = self.connectionAndState.withLock { $0.connection }
+        guard let sessionConnection = sessionConnection else { return }
         guard connection === sessionConnection else { return }
         
         // check state
-        let sessionState = await self.connectionAndState.hsmsConnectionStateUpdateNotifier.lastState
+        let sessionState = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier.lastState }
         guard sessionState == .selected else { return }
         
         do {
@@ -100,7 +104,9 @@ extension HSMSSession {
                 break
                 
             case .separateRequest:
-                await self.connectionAndState.unset()
+                self.connectionAndState.withLock {
+                    $0.unset()
+                }
                 
             default:
                 if HSMSMessage.MessageType.hasPType(hsmsMessage: message) {

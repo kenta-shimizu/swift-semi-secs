@@ -104,7 +104,7 @@ extension GEM {
     }
     
     private func s1f13Inner(secs2Body: SECS2Body) async throws -> (commack: COMMACK, mdln: String?, softrev: String?) {
-        guard let s1f14 = try await self.communicator?.send(stream: 1, function: 13, wbit: true) else {
+        guard let s1f14 = try await self.communicator.send(stream: 1, function: 13, wbit: true) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s1f14, stream: 1, function: 14)
@@ -168,7 +168,7 @@ extension GEM {
     }
     
     private func s1f14Inner(primaryMessage: any SECSMessage, commack: COMMACK, secs2Body: SECS2Body) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 1, function: 14, wbit: false, secs2Body: SECS2Body(list: [
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 1, function: 14, wbit: false, secs2Body: SECS2Body(list: [
             SECS2Body(binary: Data([commack.uint8Value])),
             secs2Body
         ]))

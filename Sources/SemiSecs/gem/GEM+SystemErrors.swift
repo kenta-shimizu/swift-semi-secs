@@ -112,7 +112,7 @@ extension GEM {
     }
     
     private func s9fy(referenceMessage: any SECSMessage, function: UInt8) async throws {
-        try await self.communicator?.send(stream: 9, function: function, wbit: false, secs2Body: SECS2Body(binary: referenceMessage.header10Bytes))
+        try await self.communicator.send(stream: 9, function: function, wbit: false, secs2Body: SECS2Body(binary: referenceMessage.header10Bytes))
     }
     
 }

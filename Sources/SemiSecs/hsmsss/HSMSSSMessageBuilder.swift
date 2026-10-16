@@ -11,12 +11,17 @@ import Synchronization
 /// HSMS-SS Message Builder.
 public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
     
-    public nonisolated(unsafe) var isEquipment: (() -> Bool)?
-    private let systemLower2BytesCounter: Atomic<UInt16>
+    private let systemLower2BytesCounter = Atomic<UInt16>(0)
     
     public init() {
-        self.isEquipment = nil
-        self.systemLower2BytesCounter = Atomic<UInt16>(0)
+        // Nothing
+    }
+    
+    private let _isEquipment = Mutex<(@Sendable () -> Bool)?>(nil)
+    
+    public var isEquipment: (@Sendable () -> Bool)? {
+        get { self._isEquipment.withLock { $0 } }
+        set { self._isEquipment.withLock { $0 = newValue } }
     }
     
     private func toSessionIds(_ sessionId: UInt16) -> [UInt8] {

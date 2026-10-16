@@ -71,7 +71,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s10f2(primaryMessage: SECSMessage, ackc10: ACKC10) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 10, function: 2, wbit: false, secs2Body: SECS2Body(binary: Data([ackc10.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 10, function: 2, wbit: false, secs2Body: SECS2Body(binary: Data([ackc10.uint8Value])))
     }
     
     /// S10F4 Terminal Display, Single Acknowledge
@@ -89,7 +89,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s10f4(primaryMessage: SECSMessage, ackc10: ACKC10) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 10, function: 4, wbit: false, secs2Body: SECS2Body(binary: Data([ackc10.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 10, function: 4, wbit: false, secs2Body: SECS2Body(binary: Data([ackc10.uint8Value])))
     }
     
     /// S10F6 Terminal Display, Multi-block Acknowledge
@@ -107,7 +107,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s10f6(primaryMessage: SECSMessage, ackc10: ACKC10) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 10, function: 6, wbit: false, secs2Body: SECS2Body(binary: Data([ackc10.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 10, function: 6, wbit: false, secs2Body: SECS2Body(binary: Data([ackc10.uint8Value])))
     }
     
 }

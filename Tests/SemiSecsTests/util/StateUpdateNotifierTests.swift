@@ -19,11 +19,11 @@ struct StateUpdateNotifierTests {
         let notifier = StateUpdateNotifier<String>(state: s1)
         let stream = notifier.stateUpdateStream()
         
-        await notifier.yield(s1)
-        await notifier.yield(s2)
-        await notifier.yield(s3)
-        await notifier.yield(s3)
-        await notifier.shutdown()
+        notifier.yield(s1)
+        notifier.yield(s2)
+        notifier.yield(s3)
+        notifier.yield(s3)
+        notifier.shutdown()
         
         var states: [String] = []
         for await state in stream {
@@ -48,32 +48,32 @@ struct StateUpdateNotifierTests {
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
         }
         
         try await notifier.until(s2)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
             try await Task.sleep(for: .seconds(0.1))
-            await notifier.yield(s1)
+            notifier.yield(s1)
             try await Task.sleep(for: .seconds(0.1))
-            await notifier.yield(s3)
+            notifier.yield(s3)
         }
         
         try await notifier.until(s3)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.shutdown()
+            notifier.shutdown()
         }
         
         await #expect(throws: CancellationError.self) {
             try await notifier.until(s1)
         }
         
-        await notifier.yield(s1)
+        notifier.yield(s1)
         
         await #expect(throws: CancellationError.self) {
             try await notifier.until(s1)
@@ -93,30 +93,30 @@ struct StateUpdateNotifierTests {
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
         }
         
         try await notifier.untilNot(s1)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
             try await Task.sleep(for: .seconds(0.1))
-            await notifier.yield(s3)
+            notifier.yield(s3)
         }
         
         try await notifier.untilNot(s2)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.shutdown()
+            notifier.shutdown()
         }
         
         await #expect(throws: CancellationError.self) {
             try await notifier.untilNot(s3)
         }
         
-        await notifier.yield(s1)
+        notifier.yield(s1)
         
         await #expect(throws: CancellationError.self) {
             let _ = try await notifier.untilNot(s3)
@@ -136,18 +136,18 @@ struct StateUpdateNotifierTests {
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
         }
         
         #expect(try await notifier.until(s2, timeout: .seconds(1.0)) == true)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
             try await Task.sleep(for: .seconds(0.1))
-            await notifier.yield(s1)
+            notifier.yield(s1)
             try await Task.sleep(for: .seconds(0.1))
-            await notifier.yield(s3)
+            notifier.yield(s3)
         }
         
         #expect(try await notifier.until(s3, timeout: .seconds(1.0)) == true)
@@ -156,21 +156,21 @@ struct StateUpdateNotifierTests {
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
         }
         
         #expect(try await notifier.until(s2, timeout: .seconds(1.0)) == true)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.shutdown()
+            notifier.shutdown()
         }
         
         await #expect(throws: CancellationError.self) {
             try await notifier.until(s1, timeout: .seconds(1.0))
         }
         
-        await notifier.yield(s1)
+        notifier.yield(s1)
         
         await #expect(throws: CancellationError.self) {
             try await notifier.until(s1, timeout: .seconds(1.0))
@@ -190,16 +190,16 @@ struct StateUpdateNotifierTests {
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
         }
         
         #expect(try await notifier.untilNot(s1, timeout: .seconds(1.0)) == true)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
             try await Task.sleep(for: .seconds(0.1))
-            await notifier.yield(s3)
+            notifier.yield(s3)
         }
         
         #expect(try await notifier.untilNot(s2, timeout: .seconds(1.0)) == true)
@@ -208,21 +208,21 @@ struct StateUpdateNotifierTests {
 
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.yield(s2)
+            notifier.yield(s2)
         }
         
         #expect(try await notifier.untilNot(s3, timeout: .seconds(1.0)) == true)
         
         Task {
             try await Task.sleep(for: .seconds(0.2))
-            await notifier.shutdown()
+            notifier.shutdown()
         }
         
         await #expect(throws: CancellationError.self) {
             try await notifier.untilNot(s2, timeout: .seconds(1.0))
         }
         
-        await notifier.yield(s1)
+        notifier.yield(s1)
         
         await #expect(throws: CancellationError.self) {
             let _ = try await notifier.untilNot(s2, timeout: .seconds(1.0))
