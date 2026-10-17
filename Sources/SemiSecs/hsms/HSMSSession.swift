@@ -75,10 +75,9 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     private let _gem = GEM()
     private let communicatableNotifier = StateUpdateNotifier<Bool>(state: false)
     internal let (receiveHSMSMessageStream, receiveHSMSMessageCotinuation) = AsyncStream.makeStream(of: HSMSMessage.self)
+    internal let connectionAndState = Mutex<NWConnectionAndHSMSConnectionState>(NWConnectionAndHSMSConnectionState())
     
     // MARK: - var
-    
-    internal let connectionAndState = Mutex<NWConnectionAndHSMSConnectionState>(NWConnectionAndHSMSConnectionState())
     
     private let _hsmsSessionId = Mutex<(@Sendable () -> UInt16)?>(nil)
     
@@ -158,9 +157,7 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     
     /// Session-ID
     public var sessionId: UInt16 {
-        get {
-            return self.hsmsSessionId!()
-        }
+        get { self.hsmsSessionId!() }
     }
     
     // MARK: - HSMSConnectionStateDetectable

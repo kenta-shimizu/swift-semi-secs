@@ -36,23 +36,23 @@ public protocol SECSMessage: CustomStringConvertible, CustomDebugStringConvertib
 public extension SECSMessage {
     
     var stream: UInt8 {
-        return self.header10Bytes[2] & 0x7F
+        get { self.header10Bytes[2] & 0x7F }
     }
     
     var function: UInt8 {
-        return self.header10Bytes[3]
+        get { self.header10Bytes[3] }
     }
     
     var wbit: Bool {
-        return (self.header10Bytes[2] & 0x80) == 0x80
+        get { (self.header10Bytes[2] & 0x80) == 0x80 }
     }
     
     var system4BytesKeyValue: UInt32 {
-        return UInt32(bytes: Array(self.header10Bytes[6...9]))!
+        get { UInt32(bytes: Array(self.header10Bytes[6...9]))! }
     }
     
     var isDataMessage: Bool {
-        return true
+        get { true }
     }
 
 }

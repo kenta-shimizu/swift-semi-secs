@@ -7,32 +7,24 @@
 
 import Foundation
 
-public struct SECS2Body: SECS2BodyProvider {
+public struct SECS2Body: SECS2BodyProvider, Sendable {
     
-    fileprivate nonisolated(unsafe) let inner: SECS2BodyInnerBase
+    fileprivate let inner: SECS2BodyInnerBase
     
     public var count: Int {
-        get {
-            return self.inner.count
-        }
+        get { self.inner.count }
     }
     
     public var type: SECS2BodyItemType {
-        get {
-            return self.inner.type
-        }
+        get { self.inner.type }
     }
     
     public var data: Data {
-        get {
-            return self.inner.data
-        }
+        get { self.inner.data }
     }
     
     public var smlString: String {
-        get {
-            return self.inner.smlString(indent: "")
-        }
+        get { self.inner.smlString(indent: "") }
     }
     
     public subscript(index: Int) -> (any SECS2BodyProvider)? {
@@ -46,7 +38,7 @@ public struct SECS2Body: SECS2BodyProvider {
     // MARK: getter
     
     public var value: Any? {
-        return self.inner.value
+        get { self.inner.value }
     }
     
     @discardableResult
@@ -458,7 +450,7 @@ public struct SECS2Body: SECS2BodyProvider {
 
 // MARK: Inner
 
-fileprivate class SECS2BodyInnerBase: Sequence {
+fileprivate class SECS2BodyInnerBase: Sequence, @unchecked Sendable {
     
     private static let emptyValues: [any SECS2BodyProvider] = []
     
@@ -471,16 +463,12 @@ fileprivate class SECS2BodyInnerBase: Sequence {
     }
     
     fileprivate var data: Data {
-        get {
-            return self._data
-        }
+        get { self._data }
     }
     
     /// SECS-II Item Type
     fileprivate var type: SECS2BodyItemType {
-        get {
-            return self._secs2BodyItemType
-        }
+        get { self._secs2BodyItemType }
     }
     
     /// Count Item size
@@ -570,7 +558,7 @@ fileprivate class SECS2BodyInnerBase: Sequence {
     
 }
 
-fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2BodyInnerBase {
+fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2BodyInnerBase, @unchecked Sendable {
     
     fileprivate let _values: [T]
     
@@ -580,9 +568,7 @@ fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2Body
     }
     
     fileprivate override var count: Int {
-        get {
-            return self._values.count
-        }
+        get { self._values.count }
     }
     
     fileprivate override func smlValueString() -> String {
@@ -590,9 +576,7 @@ fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2Body
     }
     
     fileprivate override var value: Any? {
-        get {
-            return self._values
-        }
+        get { self._values }
     }
     
     fileprivate override func anyValue(indices: [Int]) -> Any? {
@@ -611,7 +595,7 @@ fileprivate class SECS2BodyInnerArrayBase<T: CustomStringConvertible>: SECS2Body
     
 }
 
-fileprivate class SECS2BodyInnerDataBase: SECS2BodyInnerBase {
+fileprivate class SECS2BodyInnerDataBase: SECS2BodyInnerBase, @unchecked Sendable {
     
     fileprivate let _values: Data
     
@@ -621,20 +605,16 @@ fileprivate class SECS2BodyInnerDataBase: SECS2BodyInnerBase {
     }
     
     fileprivate override var count: Int {
-        get {
-            return self._values.count
-        }
+        get { self._values.count }
     }
     
     fileprivate override var value: Any? {
-        get {
-            return self._values
-        }
+        get { self._values }
     }
 
 }
 
-fileprivate final class SECS2BodyInnerList: SECS2BodyInnerBase {
+fileprivate final class SECS2BodyInnerList: SECS2BodyInnerBase, @unchecked Sendable {
     
     private static let lineSeparator = "\n"
     private static let indent = "  "
@@ -665,9 +645,7 @@ fileprivate final class SECS2BodyInnerList: SECS2BodyInnerBase {
     }
     
     fileprivate override var count: Int {
-        get {
-            return self._values.count
-        }
+        get { self._values.count }
     }
     
     fileprivate override func smlString(indent: String = "") -> String {
@@ -692,9 +670,7 @@ fileprivate final class SECS2BodyInnerList: SECS2BodyInnerBase {
     }
     
     fileprivate override var value: Any? {
-        get {
-            return self._values
-        }
+        get { self._values }
     }
     
     fileprivate override func makeIterator() -> IndexingIterator<[any SECS2BodyProvider]> {
@@ -724,7 +700,7 @@ fileprivate final class SECS2BodyInnerList: SECS2BodyInnerBase {
     
 }
 
-fileprivate final class SECS2BodyInnerBinary: SECS2BodyInnerDataBase {
+fileprivate final class SECS2BodyInnerBinary: SECS2BodyInnerDataBase, @unchecked Sendable {
     
     fileprivate init(binary: Data, data: Data) {
         super.init(values: binary, data: data, secs2BodyItemType: .binary)
@@ -757,7 +733,7 @@ fileprivate final class SECS2BodyInnerBinary: SECS2BodyInnerDataBase {
     
 }
 
-fileprivate final class SECS2BodyInnerBoolean: SECS2BodyInnerArrayBase<Bool> {
+fileprivate final class SECS2BodyInnerBoolean: SECS2BodyInnerArrayBase<Bool>, @unchecked Sendable {
     
     fileprivate init(boolean: [Bool], data: Data) {
         super.init(values: boolean, data: data, secs2BodyItemType: .boolean)
@@ -776,7 +752,7 @@ fileprivate final class SECS2BodyInnerBoolean: SECS2BodyInnerArrayBase<Bool> {
     
 }
 
-fileprivate final class SECS2BodyInnerAscii: SECS2BodyInnerBase {
+fileprivate final class SECS2BodyInnerAscii: SECS2BodyInnerBase, @unchecked Sendable {
     
     private let _values: String
     
@@ -786,15 +762,11 @@ fileprivate final class SECS2BodyInnerAscii: SECS2BodyInnerBase {
     }
     
     fileprivate override var count: Int {
-        get {
-            return self._values.count
-        }
+        get { self._values.count }
     }
     
     fileprivate override var value: Any? {
-        get {
-            return self._values
-        }
+        get { self._values }
     }
     
     fileprivate override func smlValueString() -> String {
@@ -822,7 +794,7 @@ fileprivate final class SECS2BodyInnerAscii: SECS2BodyInnerBase {
     
 }
 
-fileprivate final class SECS2BodyInnerJis8: SECS2BodyInnerDataBase {
+fileprivate final class SECS2BodyInnerJis8: SECS2BodyInnerDataBase, @unchecked Sendable {
     
     fileprivate init(jis8: Data, data: Data) {
         super.init(values: jis8, data: data, secs2BodyItemType: .jis8)
@@ -835,7 +807,7 @@ fileprivate final class SECS2BodyInnerJis8: SECS2BodyInnerDataBase {
     
 }
 
-fileprivate final class SECS2BodyInnerCharacter2Bytes: SECS2BodyInnerDataBase {
+fileprivate final class SECS2BodyInnerCharacter2Bytes: SECS2BodyInnerDataBase, @unchecked Sendable {
     
     fileprivate init(character2Bytes: Data, data: Data) {
         super.init(values: character2Bytes, data: data, secs2BodyItemType: .character2Bytes)
@@ -848,7 +820,7 @@ fileprivate final class SECS2BodyInnerCharacter2Bytes: SECS2BodyInnerDataBase {
     
 }
 
-fileprivate final class SECS2BodyInnerInt1: SECS2BodyInnerArrayBase<Int8> {
+fileprivate final class SECS2BodyInnerInt1: SECS2BodyInnerArrayBase<Int8>, @unchecked Sendable {
     
     fileprivate init(int1: [Int8], data: Data) {
         super.init(values: int1, data: data, secs2BodyItemType: .int1)
@@ -862,7 +834,7 @@ fileprivate final class SECS2BodyInnerInt1: SECS2BodyInnerArrayBase<Int8> {
     }
 }
 
-fileprivate final class SECS2BodyInnerInt2: SECS2BodyInnerArrayBase<Int16> {
+fileprivate final class SECS2BodyInnerInt2: SECS2BodyInnerArrayBase<Int16>, @unchecked Sendable {
     
     fileprivate init(int2: [Int16], data: Data) {
         super.init(values: int2, data: data, secs2BodyItemType: .int2)
@@ -876,7 +848,7 @@ fileprivate final class SECS2BodyInnerInt2: SECS2BodyInnerArrayBase<Int16> {
     }
 }
 
-fileprivate final class SECS2BodyInnerInt4: SECS2BodyInnerArrayBase<Int32> {
+fileprivate final class SECS2BodyInnerInt4: SECS2BodyInnerArrayBase<Int32>, @unchecked Sendable {
     
     fileprivate init(int4: [Int32], data: Data) {
         super.init(values: int4, data: data, secs2BodyItemType: .int4)
@@ -890,7 +862,7 @@ fileprivate final class SECS2BodyInnerInt4: SECS2BodyInnerArrayBase<Int32> {
     }
 }
 
-fileprivate final class SECS2BodyInnerInt8: SECS2BodyInnerArrayBase<Int64> {
+fileprivate final class SECS2BodyInnerInt8: SECS2BodyInnerArrayBase<Int64>, @unchecked Sendable {
     
     fileprivate init(int8: [Int64], data: Data) {
         super.init(values: int8, data: data, secs2BodyItemType: .int8)
@@ -904,7 +876,7 @@ fileprivate final class SECS2BodyInnerInt8: SECS2BodyInnerArrayBase<Int64> {
     }
 }
 
-fileprivate final class SECS2BodyInnerUInt1: SECS2BodyInnerArrayBase<UInt8> {
+fileprivate final class SECS2BodyInnerUInt1: SECS2BodyInnerArrayBase<UInt8>, @unchecked Sendable {
     
     fileprivate init(uint1: [UInt8], data: Data) {
         super.init(values: uint1, data: data, secs2BodyItemType: .uint1)
@@ -918,7 +890,7 @@ fileprivate final class SECS2BodyInnerUInt1: SECS2BodyInnerArrayBase<UInt8> {
     }
 }
 
-fileprivate final class SECS2BodyInnerUInt2: SECS2BodyInnerArrayBase<UInt16> {
+fileprivate final class SECS2BodyInnerUInt2: SECS2BodyInnerArrayBase<UInt16>, @unchecked Sendable {
     
     fileprivate init(uint2: [UInt16], data: Data) {
         super.init(values: uint2, data: data, secs2BodyItemType: .uint2)
@@ -932,7 +904,7 @@ fileprivate final class SECS2BodyInnerUInt2: SECS2BodyInnerArrayBase<UInt16> {
     }
 }
 
-fileprivate final class SECS2BodyInnerUInt4: SECS2BodyInnerArrayBase<UInt32> {
+fileprivate final class SECS2BodyInnerUInt4: SECS2BodyInnerArrayBase<UInt32>, @unchecked Sendable {
     
     fileprivate init(uint4: [UInt32], data: Data) {
         super.init(values: uint4, data: data, secs2BodyItemType: .uint4)
@@ -946,7 +918,7 @@ fileprivate final class SECS2BodyInnerUInt4: SECS2BodyInnerArrayBase<UInt32> {
     }
 }
 
-fileprivate final class SECS2BodyInnerUInt8: SECS2BodyInnerArrayBase<UInt64> {
+fileprivate final class SECS2BodyInnerUInt8: SECS2BodyInnerArrayBase<UInt64>, @unchecked Sendable {
     
     fileprivate init(uint8: [UInt64], data: Data) {
         super.init(values: uint8, data: data, secs2BodyItemType: .uint8)
@@ -960,7 +932,7 @@ fileprivate final class SECS2BodyInnerUInt8: SECS2BodyInnerArrayBase<UInt64> {
     }
 }
 
-fileprivate final class SECS2BodyInnerFloat4: SECS2BodyInnerArrayBase<Float> {
+fileprivate final class SECS2BodyInnerFloat4: SECS2BodyInnerArrayBase<Float>, @unchecked Sendable {
     
     fileprivate init(float4: [Float], data: Data) {
         super.init(values: float4, data: data, secs2BodyItemType: .float4)
@@ -974,7 +946,7 @@ fileprivate final class SECS2BodyInnerFloat4: SECS2BodyInnerArrayBase<Float> {
     }
 }
 
-fileprivate final class SECS2BodyInnerFloat8: SECS2BodyInnerArrayBase<Double> {
+fileprivate final class SECS2BodyInnerFloat8: SECS2BodyInnerArrayBase<Double>, @unchecked Sendable {
     
     fileprivate init(float8: [Double], data: Data) {
         super.init(values: float8, data: data, secs2BodyItemType: .float8)
@@ -988,7 +960,7 @@ fileprivate final class SECS2BodyInnerFloat8: SECS2BodyInnerArrayBase<Double> {
     }
 }
 
-fileprivate final class SECS2BodyInnerUnknown: SECS2BodyInnerDataBase {
+fileprivate final class SECS2BodyInnerUnknown: SECS2BodyInnerDataBase, @unchecked Sendable {
     
     fileprivate init(unknown: Data, data: Data) {
         super.init(values: unknown, data: data, secs2BodyItemType: .unknown)
@@ -1000,7 +972,7 @@ fileprivate final class SECS2BodyInnerUnknown: SECS2BodyInnerDataBase {
     }
 }
 
-fileprivate final class SECS2BodyInnerError: SECS2BodyInnerBase {
+fileprivate final class SECS2BodyInnerError: SECS2BodyInnerBase, @unchecked Sendable {
     
     fileprivate init(error: Data) {
         super.init(data: error, secs2BodyItemType: .error)

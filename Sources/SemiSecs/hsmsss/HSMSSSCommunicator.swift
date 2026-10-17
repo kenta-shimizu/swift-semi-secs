@@ -216,6 +216,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             Logger.communicator.debug("receive Primary-HSMS-Message and NWConnection pair pass to HSMSSession finished.")
         }
         
+        // Network Event
         Task { [weak self] in
             guard let self = self else { return }
             for await event in self.networkEventStream {
@@ -225,19 +226,20 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             Logger.communicator.debug("HSMS Network Event finished.")
         }
         
+        // receive whole HSMS-Message.
         Task { [weak self] in
             guard let self = self else { return }
-            
-            // receive whole HSMS-Message.
-            Task {
-                let stream = self.receiveWholeHSMSMessageStream
-                for await pair in stream {
-                    self._didReceiveWholeHSMSMessage.accept(pair.message, pair.connection)
-                    Logger.receiveHSMSMessage.notice("\(String(describing: pair.message))")
-                }
-                
-                Logger.communicator.debug("receiveWholeHSMSMessageStream finished.")
+            let stream = self.receiveWholeHSMSMessageStream
+            for await pair in stream {
+                self._didReceiveWholeHSMSMessage.accept(pair.message, pair.connection)
+                Logger.receiveHSMSMessage.notice("\(String(describing: pair.message))")
             }
+            
+            Logger.communicator.debug("receiveWholeHSMSMessageStream finished.")
+        }
+        
+        Task { [weak self] in
+            guard let self = self else { return }
             
             self.session.start()
             
@@ -249,14 +251,14 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         case .active:
                             Logger.communicator.notice("HSMS-SS Active perform start.")
                             try await self.performActive(queue: queue)
-                            try Task.checkCancellation()
                             
                         case .passive:
                             Logger.communicator.notice("HSMS-SS Passive perform start.")
                             try await self.performPassive(queue: queue)
-                            try Task.checkCancellation()
                         }
                         
+                        try Task.checkCancellation()
+
                         switch self.config.connectionMode {
                         case .active:
                             Logger.communicator.notice("HSMS-SS Active sleep T5-Timeout: \(self.config.timeout.t5)")

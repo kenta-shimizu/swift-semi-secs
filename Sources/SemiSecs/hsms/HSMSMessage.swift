@@ -251,71 +251,75 @@ public struct HSMSMessage: SECSMessage {
     }
     
     public var count: Int {
-        return self._header10Bytes.count + (self._secs2Body?.data.count ?? 0)
+        get { self._header10Bytes.count + (self._secs2Body?.data.count ?? 0) }
     }
     
     public var secs2Body: (any SECS2BodyProvider)? {
-        return self._secs2Body
+        get { self._secs2Body }
     }
     
     public var header10Bytes: Data {
-        return self._header10Bytes
+        get { self._header10Bytes }
     }
     
     public var sessionId: UInt16 {
-        return UInt16(bytes: Array(self.header10Bytes[0...1]))!
+        get { UInt16(bytes: Array(self.header10Bytes[0...1]))! }
     }
     
     public var isDataMessage: Bool {
-        return self.messageType == .data
+        get { self.messageType == .data }
     }
     
     public var pTypeByte: UInt8 {
-        return self._header10Bytes[4]
+        get { self._header10Bytes[4] }
     }
     
     public var sTypeByte: UInt8 {
-        return self._header10Bytes[5]
+        get { self._header10Bytes[5] }
     }
     
     public var messageType: MessageType {
-        return MessageType(pType: self.pTypeByte, sType: self.sTypeByte)
+        get { MessageType(pType: self.pTypeByte, sType: self.sTypeByte) }
     }
     
     private static let lineSeparator: String = "\n"
     private static let endMessage = "."
     
     public var header10BytesString: String {
-        return String(format: "[%02X %02X|%02X %02X|%02X %02X|%02X %02X %02X %02X]",
-                      self._header10Bytes[0],
-                      self._header10Bytes[1],
-                      self._header10Bytes[2],
-                      self._header10Bytes[3],
-                      self._header10Bytes[4],
-                      self._header10Bytes[5],
-                      self._header10Bytes[6],
-                      self._header10Bytes[7],
-                      self._header10Bytes[8],
-                      self._header10Bytes[9])
+        get {
+            return String(format: "[%02X %02X|%02X %02X|%02X %02X|%02X %02X %02X %02X]",
+                          self._header10Bytes[0],
+                          self._header10Bytes[1],
+                          self._header10Bytes[2],
+                          self._header10Bytes[3],
+                          self._header10Bytes[4],
+                          self._header10Bytes[5],
+                          self._header10Bytes[6],
+                          self._header10Bytes[7],
+                          self._header10Bytes[8],
+                          self._header10Bytes[9])
+        }
     }
     
     public var description: String {
-        var r = self.header10BytesString + " \(self.messageType.descriptionString) length:\(self.count)"
-        if self.isDataMessage {
-            r += "\(Self.lineSeparator)S\(self.stream)F\(self.function)"
-            if self.wbit {
-                r += " W"
+        get {
+            var r = self.header10BytesString + " \(self.messageType.descriptionString) length:\(self.count)"
+            if self.isDataMessage {
+                r += "\(Self.lineSeparator)S\(self.stream)F\(self.function)"
+                if self.wbit {
+                    r += " W"
+                }
+                if let secs2BodySmlString = self._secs2Body?.smlString {
+                    r += Self.lineSeparator + secs2BodySmlString
+                }
+                r += Self.endMessage
             }
-            if let secs2BodySmlString = self._secs2Body?.smlString {
-                r += Self.lineSeparator + secs2BodySmlString
-            }
-            r += Self.endMessage
+            return r
         }
-        return r
     }
     
     public var debugDescription: String {
-        return self.description;
+        get { self.description }
     }
     
 }

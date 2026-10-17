@@ -10,7 +10,7 @@ import Synchronization
 
 internal final class MutexConsumerWrapper<T>: Sendable {
     
-    internal struct Inner: @unchecked Sendable {
+    private struct Inner: @unchecked Sendable {
         internal var closure: ((T) -> Void)?
         
         internal init() {
@@ -37,7 +37,7 @@ internal final class MutexConsumerWrapper<T>: Sendable {
 
 internal final class MutexBiConsumerWrapper<T, U>: Sendable {
     
-    internal struct Inner: @unchecked Sendable {
+    private struct Inner: @unchecked Sendable {
         internal var closure: ((T, U) -> Void)?
         
         internal init() {

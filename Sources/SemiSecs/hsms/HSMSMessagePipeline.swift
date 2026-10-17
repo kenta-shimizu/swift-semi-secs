@@ -41,12 +41,12 @@ internal final class HSMSMessagePipeline: Sendable {
                 do {
                     while !Task.isCancelled {
                         let lengthData = try await self.readLengthData()
-                        let bodyDataCount = ((Int(lengthData[0]) << 24) | (Int(lengthData[1]) << 16) | (Int(lengthData[2]) << 8) | Int(lengthData[3]))
-                        guard bodyDataCount >= 10 else {
+                        let length = Int(UInt32(bytes: Array(lengthData))!)
+                        guard length >= 10 else {
                             throw HSMSReceiveError.illegalReceiveLengthByte
                         }
                         let headerData = try await self.readHeaderData()
-                        let bodyData = try await self.readBodyData(length: bodyDataCount - 10)
+                        let bodyData = try await self.readBodyData(length: length - 10)
                         let message = HSMSMessageDecoder.shared.decode(header10Bytes: headerData, secs2BodyData: bodyData)
                         let hsmsMessageAndNWConnection = HSMSMessageAndNWConnection(message: message, connection: self.connection)
                         continuation.yield(.success(hsmsMessageAndNWConnection))
