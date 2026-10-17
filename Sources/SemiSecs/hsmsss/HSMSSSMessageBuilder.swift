@@ -24,25 +24,10 @@ public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
         set { self._isEquipment.withLock { $0 = newValue } }
     }
     
-    private func toSessionIds(_ sessionId: UInt16) -> [UInt8] {
-        return [
-            UInt8(sessionId >> 8),
-            UInt8(sessionId & 0x00FF)
-        ]
-    }
-    
-    private func atomicIncrement2Bytes() -> [UInt8] {
-        let (_, newValue) = self.systemLower2BytesCounter.add(1, ordering: .relaxed)
-        return [
-            UInt8(newValue >> 8),
-            UInt8(newValue & 0x00FF)
-        ]
-    }
-    
     public func buildPrimaryData(sessionId: UInt16, smlMessage: SMLMessage) -> HSMSMessage {
-        let ids = self.toSessionIds(sessionId)
+        let ids = sessionId.toBytes()
         let isEquipment = self.isEquipment!()
-        let systemLower2Bytes = self.atomicIncrement2Bytes()
+        let systemLower2Bytes = self.systemLower2BytesCounter.incrementAndToBytes()
         let header10Bytes = Data([
             ids[0],
             ids[1],
@@ -59,9 +44,9 @@ public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
     }
     
     public func buildSelectRequest(sessionId: UInt16) -> HSMSMessage {
-        let ids = self.toSessionIds(sessionId)
+        let ids = sessionId.toBytes()
         let isEquipment = self.isEquipment!()
-        let systemLower2Bytes = self.atomicIncrement2Bytes()
+        let systemLower2Bytes = self.systemLower2BytesCounter.incrementAndToBytes()
         let header10Bytes = Data([
             0xFF,
             0xFF,
@@ -78,9 +63,9 @@ public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
     }
     
     public func buildDeselectRequest(sessionId: UInt16) -> HSMSMessage {
-        let ids = self.toSessionIds(sessionId)
+        let ids = sessionId.toBytes()
         let isEquipment = self.isEquipment!()
-        let systemLower2Bytes = self.atomicIncrement2Bytes()
+        let systemLower2Bytes = self.systemLower2BytesCounter.incrementAndToBytes()
         let header10Bytes = Data([
             0xFF,
             0xFF,
@@ -97,9 +82,9 @@ public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
     }
     
     public func buildLinktestRequest(sessionId: UInt16) -> HSMSMessage {
-        let ids = self.toSessionIds(sessionId)
+        let ids = sessionId.toBytes()
         let isEquipment = self.isEquipment!()
-        let systemLower2Bytes = self.atomicIncrement2Bytes()
+        let systemLower2Bytes = self.systemLower2BytesCounter.incrementAndToBytes()
         let header10Bytes = Data([
             0xFF,
             0xFF,
@@ -116,9 +101,9 @@ public final class HSMSSSMessageBuilder: HSMSMessageBuildable, Sendable {
     }
     
     public func buildSeparateRequest(sessionId: UInt16) -> HSMSMessage {
-        let ids = self.toSessionIds(sessionId)
+        let ids = sessionId.toBytes()
         let isEquipment = self.isEquipment!()
-        let systemLower2Bytes = self.atomicIncrement2Bytes()
+        let systemLower2Bytes = self.systemLower2BytesCounter.incrementAndToBytes()
         let header10Bytes = Data([
             0xFF,
             0xFF,

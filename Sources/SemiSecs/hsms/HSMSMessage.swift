@@ -82,7 +82,7 @@ public struct HSMSMessage: SECSMessage {
         }
         
         public static func hasPType(hsmsMessage: HSMSMessage) -> Bool {
-            let pType = hsmsMessage.pType
+            let pType = hsmsMessage.pTypeByte
             for i in Self.allCases {
                 if i.pType == pType {
                     return true
@@ -263,23 +263,23 @@ public struct HSMSMessage: SECSMessage {
     }
     
     public var sessionId: UInt16 {
-        return UInt16(self._header10Bytes[0]) << 8 | UInt16(self._header10Bytes[1])
+        return UInt16(bytes: Array(self.header10Bytes[0...1]))!
     }
     
     public var isDataMessage: Bool {
         return self.messageType == .data
     }
     
-    public var pType: UInt8 {
+    public var pTypeByte: UInt8 {
         return self._header10Bytes[4]
     }
     
-    public var sType: UInt8 {
+    public var sTypeByte: UInt8 {
         return self._header10Bytes[5]
     }
     
     public var messageType: MessageType {
-        return MessageType(pType: self.pType, sType: self.sType)
+        return MessageType(pType: self.pTypeByte, sType: self.sTypeByte)
     }
     
     private static let lineSeparator: String = "\n"

@@ -48,7 +48,7 @@ public extension SECSMessage {
     }
     
     var system4BytesKeyValue: UInt32 {
-        return (UInt32(self.header10Bytes[6]) << 24) | (UInt32(self.header10Bytes[7]) << 16) | (UInt32(self.header10Bytes[8]) << 8) | UInt32(self.header10Bytes[9])
+        return UInt32(bytes: Array(self.header10Bytes[6...9]))!
     }
     
     var isDataMessage: Bool {

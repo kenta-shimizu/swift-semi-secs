@@ -82,11 +82,9 @@ public final class GEM: Sendable {
         }
         
         // check Device-ID.
-        let deviceId = self.deviceId
-        let b0 = UInt8(deviceId >> 8)
-        let b1 = UInt8(deviceId & 0x00FF)
-        guard (responseMessage.header10Bytes[0] & 0x7F) == b0 &&
-                responseMessage.header10Bytes[1] == b1 else {
+        let deviceIds = self.deviceId.toBytes()
+        guard (responseMessage.header10Bytes[0] & 0x7F) == deviceIds[0] &&
+                responseMessage.header10Bytes[1] == deviceIds[1] else {
             throw GEMError.unrecognizedDeviceID(responseMesage: responseMessage)
         }
         

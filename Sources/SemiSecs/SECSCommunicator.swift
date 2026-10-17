@@ -23,129 +23,129 @@ public protocol SECSReceiveError: SECSError {
 public protocol SECSCommunicatorError: SECSError {
 }
 
-public struct SECSCommunicatorTimeoutConfig: Sendable {
+public final class SECSCommunicatorTimeoutConfig: Sendable {
     
-    private var _t1: Duration
-    private var _t2: Duration
-    private var _t3: Duration
-    private var _t4: Duration
-    private var _t5: Duration
-    private var _t6: Duration
-    private var _t7: Duration
-    private var _t8: Duration
+    private let _t1: Mutex<Duration>
+    private let _t2: Mutex<Duration>
+    private let _t3: Mutex<Duration>
+    private let _t4: Mutex<Duration>
+    private let _t5: Mutex<Duration>
+    private let _t6: Mutex<Duration>
+    private let _t7: Mutex<Duration>
+    private let _t8: Mutex<Duration>
     
     public init() {
-        self._t1 = .seconds(1.0)
-        self._t2 = .seconds(15.0)
-        self._t3 = .seconds(45.0)
-        self._t4 = .seconds(45.0)
-        self._t5 = .seconds(10.0)
-        self._t6 = .seconds(5.0)
-        self._t7 = .seconds(10.0)
-        self._t8 = .seconds(6.0)
+        self._t1 = Mutex<Duration>(.seconds( 1.0))
+        self._t2 = Mutex<Duration>(.seconds(15.0))
+        self._t3 = Mutex<Duration>(.seconds(45.0))
+        self._t4 = Mutex<Duration>(.seconds(45.0))
+        self._t5 = Mutex<Duration>(.seconds(10.0))
+        self._t6 = Mutex<Duration>(.seconds( 5.0))
+        self._t7 = Mutex<Duration>(.seconds(10.0))
+        self._t8 = Mutex<Duration>(.seconds( 6.0))
     }
     
     /// Timeout-T1
     public var t1: Duration {
         get {
-            return self._t1
+            return self._t1.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t1 set value >0.0")
             }
-            self._t1 = newValue
+            self._t1.withLock { $0 = newValue }
         }
     }
     
     /// Timeout-T2
     public var t2: Duration {
         get {
-            return self._t2
+            return self._t2.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t2 set value >0.0")
             }
-            self._t2 = newValue
+            self._t2.withLock { $0 = newValue }
         }
     }
     
     /// Timeout-T3
     public var t3: Duration {
         get {
-            return self._t3
+            return self._t3.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t3 set value >0.0")
             }
-            self._t3 = newValue
+            self._t3.withLock { $0 = newValue }
         }
     }
     
     /// Timeout-T4
     public var t4: Duration {
         get {
-            return self._t4
+            return self._t4.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t4 set value >0.0")
             }
-            self._t4 = newValue
+            self._t4.withLock { $0 = newValue }
         }
     }
     
     /// Timeout-T5
     public var t5: Duration {
         get {
-            return self._t5
+            return self._t5.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t5 set value >0.0")
             }
-            self._t5 = newValue
+            self._t5.withLock { $0 = newValue }
         }
     }
     
     /// Timeout-T6
     public var t6: Duration {
         get {
-            return self._t6
+            return self._t6.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t6 set value >0.0")
             }
-            self._t6 = newValue
+            self._t6.withLock { $0 = newValue }
         }
     }
     
     /// Timeout-T7
     public var t7: Duration {
         get {
-            return self._t7
+            return self._t7.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t7 set value >0.0")
             }
-            self._t7 = newValue
+            self._t7.withLock { $0 = newValue }
         }
     }
     
     /// Timeout-T8
     public var t8: Duration {
         get {
-            return self._t8
+            return self._t8.withLock { $0 }
         }
         set {
             guard newValue > .zero else {
                 fatalError("t8 set value >0.0")
             }
-            self._t8 = newValue
+            self._t8.withLock { $0 = newValue }
         }
     }
     
@@ -158,7 +158,7 @@ public protocol SECSCommunicatorConfig: Sendable {
     var isEquipment: Bool { get set }
     
     /// timeout config.
-    var timeout: SECSCommunicatorTimeoutConfig { get set }
+    var timeout: SECSCommunicatorTimeoutConfig { get }
     
 }
 
