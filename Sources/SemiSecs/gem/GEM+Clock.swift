@@ -115,7 +115,7 @@ extension GEM {
     ///   - `GEMError`: if unexpected response.
     @discardableResult
     public func s2f17() async throws -> Date {
-        guard let s2f18 = try await self.communicator?.send(stream: 2, function: 17, wbit: true) else {
+        guard let s2f18 = try await self.communicator.send(stream: 2, function: 17, wbit: true) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s2f18, stream: 2, function: 18)
@@ -179,7 +179,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s2f18(primaryMessage: SECSMessage, datetimeString: String) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 2, function: 18, wbit: false, secs2Body: SECS2Body(ascii: datetimeString))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 2, function: 18, wbit: false, secs2Body: SECS2Body(ascii: datetimeString))
     }
     
     /// S2F31 Date and Time Set Request
@@ -243,7 +243,7 @@ extension GEM {
     ///   - `GEMError`: if unexpected response.
     @discardableResult
     public func s2f31(datetimeString: String) async throws -> TIACK {
-        guard let s2f32 = try await self.communicator?.send(stream: 2, function: 31, wbit: true, secs2Body: SECS2Body(ascii: datetimeString)) else {
+        guard let s2f32 = try await self.communicator.send(stream: 2, function: 31, wbit: true, secs2Body: SECS2Body(ascii: datetimeString)) else {
             throw GEMError.unknown
         }
         try self.checkGEMError(responseMessage: s2f32, stream: 2, function: 32)
@@ -270,7 +270,7 @@ extension GEM {
     /// - Throws:
     ///   - `SECSSendError`: if send failed.
     public func s2f32(primaryMessage: SECSMessage, tiack: TIACK) async throws {
-        try await self.communicator?.reply(primaryMessage: primaryMessage, stream: 2, function: 32, wbit: false, secs2Body: SECS2Body(binary: Data([tiack.uint8Value])))
+        try await self.communicator.reply(primaryMessage: primaryMessage, stream: 2, function: 32, wbit: false, secs2Body: SECS2Body(binary: Data([tiack.uint8Value])))
     }
     
 }

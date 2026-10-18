@@ -7,21 +7,27 @@
 
 import Foundation
 import Network
+import Synchronization
 
 internal final class HSMSMessagePipeline: Sendable {
     
     private let (byteStream, byteContinuation) = AsyncStream.makeStream(of: UInt8.self)
     
     private let connection: NWConnection
-    internal nonisolated(unsafe) var timeoutT8: (@Sendable () -> Duration)?
     
     internal init(connection: NWConnection) {
         self.connection = connection
-        self.timeoutT8 = nil
     }
     
     internal func shutdown() {
         self.byteContinuation.finish()
+    }
+    
+    private let _timeoutT8 = Mutex<(@Sendable () -> Duration)?>(nil)
+    
+    internal var timeoutT8: (@Sendable () -> Duration)? {
+        get { self._timeoutT8.withLock { $0 } }
+        set { self._timeoutT8.withLock { $0 = newValue } }
     }
     
     internal func yield(data: Data) {
@@ -35,12 +41,12 @@ internal final class HSMSMessagePipeline: Sendable {
                 do {
                     while !Task.isCancelled {
                         let lengthData = try await self.readLengthData()
-                        let bodyDataCount = ((Int(lengthData[0]) << 24) | (Int(lengthData[1]) << 16) | (Int(lengthData[2]) << 8) | Int(lengthData[3]))
-                        guard bodyDataCount >= 10 else {
+                        let length = Int(UInt32(bytes: Array(lengthData))!)
+                        guard length >= 10 else {
                             throw HSMSReceiveError.illegalReceiveLengthByte
                         }
                         let headerData = try await self.readHeaderData()
-                        let bodyData = try await self.readBodyData(length: bodyDataCount - 10)
+                        let bodyData = try await self.readBodyData(length: length - 10)
                         let message = HSMSMessageDecoder.shared.decode(header10Bytes: headerData, secs2BodyData: bodyData)
                         let hsmsMessageAndNWConnection = HSMSMessageAndNWConnection(message: message, connection: self.connection)
                         continuation.yield(.success(hsmsMessageAndNWConnection))
@@ -58,7 +64,10 @@ internal final class HSMSMessagePipeline: Sendable {
     }
     
     private func pollByte() async throws -> UInt8 {
-        guard let result = try await self.byteStream.poll(timeout: self.timeoutT8!()) else {
+        guard let timeoutT8 = self.timeoutT8?() else {
+            fatalError("timeoutT8 unset")
+        }
+        guard let result = try await self.byteStream.poll(timeout: timeoutT8) else {
             throw HSMSReceiveError.timeoutT8;
         }
         return result;

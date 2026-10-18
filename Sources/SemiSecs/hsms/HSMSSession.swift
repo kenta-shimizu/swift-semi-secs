@@ -8,6 +8,7 @@
 import Foundation
 import os
 import Network
+import Synchronization
 
 /// HSMS Session
 public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSMSConnectionStateDetectable, Sendable {
@@ -19,42 +20,50 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
         case selected = "SELECTED"
     }
     
-    internal actor NWConnectionAndHSMSConnectionState {
+    /// NWConnecgion and HSMSConnectionState
+    internal struct NWConnectionAndHSMSConnectionState {
         
         internal var connection: NWConnection?
-        internal let hsmsConnectionStateUpdateNotifier: StateUpdateNotifier<HSMSConnectionState>
+        internal let hsmsConnectionStateUpdateNotifier = StateUpdateNotifier<HSMSConnectionState>(state: .notConnected)
         
         internal init() {
             self.connection = nil
-            self.hsmsConnectionStateUpdateNotifier = StateUpdateNotifier<HSMSConnectionState>(state: .notConnected)
         }
         
-        internal func shutdown() async {
+        /// NWConnection and HSMSConnectionState getter.
+        internal var bothValue: (connection: NWConnection?, state: HSMSConnectionState) {
+            get { (self.connection , self.hsmsConnectionStateUpdateNotifier.lastState) }
+        }
+        
+        internal mutating func shutdown() {
             self.connection = nil
-            await self.hsmsConnectionStateUpdateNotifier.shutdown()
+            self.hsmsConnectionStateUpdateNotifier.shutdown()
         }
         
+        /// set NWConnection and HSMSConnectionState
+        ///
+        /// - Returns: true if NWConnection is NOT already setted, otherwise false.
         @discardableResult
-        internal func set(connection: NWConnection, state: HSMSConnectionState...) async -> Bool {
+        internal mutating func set(connection: NWConnection, state: HSMSConnectionState...) -> Bool {
             guard self.connection == nil else { return false }
             self.connection = connection
             for s in state {
-                await self.hsmsConnectionStateUpdateNotifier.yield(s)
+                self.hsmsConnectionStateUpdateNotifier.yield(s)
                 self.logging(state: s)
             }
             return true
         }
         
-        internal func set(state: HSMSConnectionState...) async {
+        internal mutating func set(state: HSMSConnectionState...) {
             for s in state {
-                await self.hsmsConnectionStateUpdateNotifier.yield(s)
+                self.hsmsConnectionStateUpdateNotifier.yield(s)
                 self.logging(state: s)
             }
         }
         
-        internal func unset() async {
+        internal mutating func unset() {
             self.connection = nil
-            await self.set(state: .notConnected)
+            self.set(state: .notConnected)
         }
         
         private func logging(state: HSMSConnectionState) {
@@ -69,52 +78,62 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     // MARK: - let
     
     private let _gem = GEM()
-    internal let connectionAndState = NWConnectionAndHSMSConnectionState()
     private let communicatableNotifier = StateUpdateNotifier<Bool>(state: false)
     internal let (receiveHSMSMessageStream, receiveHSMSMessageCotinuation) = AsyncStream.makeStream(of: HSMSMessage.self)
+    internal let connectionAndState = Mutex<NWConnectionAndHSMSConnectionState>(NWConnectionAndHSMSConnectionState())
     
     // MARK: - var
     
-    internal nonisolated(unsafe) var hsmsSessionId: (() -> UInt16)?
-    internal nonisolated(unsafe) var isEquipment: (() -> Bool)?
-    internal nonisolated(unsafe) var hsmsMessageBuilder: (() -> HSMSMessageBuildable)?
-    internal nonisolated(unsafe) var hsmsMessageTransactor: (() -> HSMSMessageTransactor)?
+    private let _hsmsSessionId = Mutex<(@Sendable () -> UInt16)?>(nil)
     
-    private nonisolated(unsafe) var _didUpdateHSMSConnectionState: ((HSMSConnectionState) -> Void)?
+    internal var hsmsSessionId: (@Sendable () -> UInt16)? {
+        get { self._hsmsSessionId.withLock { $0 } }
+        set { self._hsmsSessionId.withLock { $0 = newValue } }
+    }
     
-    private nonisolated(unsafe) var _didUpdateCommunicationState: ((Bool) -> Void)?
+    private let _isEquipment = Mutex<(@Sendable () -> Bool)?>(nil)
+
+    internal var isEquipment: (@Sendable () -> Bool)? {
+        get { self._isEquipment.withLock { $0 } }
+        set { self._isEquipment.withLock { $0 = newValue } }
+    }
     
-    private nonisolated(unsafe) var _didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)?
+    private let _hsmsMessageBuilder = Mutex<(@Sendable () -> HSMSMessageBuildable)?>(nil)
+
+    internal var hsmsMessageBuilder: (@Sendable () -> HSMSMessageBuildable)? {
+        get { self._hsmsMessageBuilder.withLock { $0 } }
+        set { self._hsmsMessageBuilder.withLock { $0 = newValue } }
+    }
+    
+    private let _hsmsMessageTransactor = Mutex<(@Sendable () -> HSMSMessageTransactor)?>(nil)
+    
+    internal var hsmsMessageTransactor: (@Sendable () -> HSMSMessageTransactor)? {
+        get { self._hsmsMessageTransactor.withLock { $0 } }
+        set { self._hsmsMessageTransactor.withLock { $0 = newValue } }
+    }
     
     // MARK: -
     
     internal init() {
-        self.hsmsMessageBuilder = nil
-        self.hsmsMessageTransactor = nil
-        self.hsmsSessionId = nil
-        self.isEquipment = nil
-        
-        self._gem.communicator = self
-        self._gem.deviceId = { [weak self] in
+        self._gem._communicator = { [weak self] in
+            return self!
+        }
+        self._gem._deviceId = { [weak self] in
             return self!.hsmsSessionId!()
         }
-        self._gem.isEquipment = { [weak self] in
+        self._gem._isEquipment = { [weak self] in
             return self!.isEquipment!()
         }
-        
-        self._didUpdateHSMSConnectionState = nil
-        self._didUpdateCommunicationState = nil
-        self._didReceivePrimaryDataSECSMessage = nil
     }
     
-    internal func start() async {
+    internal func start() {
         // HSMS-Connection-State notifier
         Task { [weak self] in
             guard let self = self else { return }
-            let stream = self.connectionAndState.hsmsConnectionStateUpdateNotifier.stateUpdateStream()
+            let stream = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier.stateUpdateStream() }
             for await state in stream {
-                self._didUpdateHSMSConnectionState?(state)
-                await self.communicatableNotifier.yield(state == .selected)
+                self._didUpdateHSMSConnectionState.accept(state)
+                self.communicatableNotifier.yield(state == .selected)
             }
         }
         // SECS-Communicate-State notifier
@@ -122,94 +141,80 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
             guard let self = self else { return  }
             let stream = self.communicatableNotifier.stateUpdateStream()
             for await state in stream {
-                self._didUpdateCommunicationState?(state)
+                self._didUpdateCommunicationState.accept(state)
             }
         }
         // Receive SECS-Message observer
         Task { [weak self] in
             guard let self = self else { return }
             for await message in receiveHSMSMessageStream {
-                self._didReceivePrimaryDataSECSMessage?(message)
+                self._didReceivePrimaryDataSECSMessage.accept(message)
             }
         }
         
     }
     
-    internal func shutdown() async {
-        self.hsmsMessageBuilder = nil
-        self.hsmsMessageTransactor = nil
-        
-        self._gem.communicator = nil
-        self._gem.deviceId = nil
-        self._gem.isEquipment = nil
-        self._didUpdateHSMSConnectionState = nil
-        
-        self._didUpdateCommunicationState = nil
-        self._didReceivePrimaryDataSECSMessage = nil
-        
-        await self.connectionAndState.shutdown()
-        await self.communicatableNotifier.shutdown()
+    internal func shutdown() {
+        self.connectionAndState.withLock { $0.shutdown() }
+        self.communicatableNotifier.shutdown()
         self.receiveHSMSMessageCotinuation.finish()
     }
     
     /// Session-ID
     public var sessionId: UInt16 {
-        get {
-            return self.hsmsSessionId!()
-        }
+        get { self.hsmsSessionId!() }
     }
     
     // MARK: - HSMSConnectionStateDetectable
     
+    private let _didUpdateCommunicationState = MutexConsumerWrapper<Bool>()
+
     public var didUpdateCommunicationState: ((Bool) -> Void)? {
-        get {
-            return self._didUpdateCommunicationState
-        }
-        set {
-            self._didUpdateCommunicationState = newValue
-        }
+        get { self._didUpdateCommunicationState.consumer }
+        set { self._didUpdateCommunicationState.consumer = newValue }
     }
     
+    private let _didUpdateHSMSConnectionState = MutexConsumerWrapper<HSMSConnectionState>()
+    
     public var didUpdateHSMSConnectionState: ((HSMSConnectionState) -> Void)? {
-        get {
-            return self._didUpdateHSMSConnectionState
-        }
-        set {
-            self._didUpdateHSMSConnectionState = newValue
-        }
+        get { self._didUpdateHSMSConnectionState.consumer }
+        set { self._didUpdateHSMSConnectionState.consumer = newValue }
     }
     
     public func until(connectionState: HSMSConnectionState) async throws {
+        let notifier = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier }
         Logger.hsmsConnectionState.notice("wait until HSMS-Connection-state: \(connectionState.rawValue)")
-        try await self.connectionAndState.hsmsConnectionStateUpdateNotifier.until(connectionState)
+        try await notifier.until(connectionState)
     }
     
     public func untilNot(connectionState: HSMSConnectionState) async throws {
+        let notifier = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier }
         Logger.hsmsConnectionState.notice("wait until NOT HSMS-Connection-state: \(connectionState.rawValue)")
-        try await self.connectionAndState.hsmsConnectionStateUpdateNotifier.untilNot(connectionState)
+        try await notifier.untilNot(connectionState)
     }
     
     @discardableResult
     public func until(connectionState: HSMSConnectionState, timeout: Duration) async throws -> Bool {
+        let notifier = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier }
         Logger.hsmsConnectionState.notice("wait until HSMS-Connection-state: \(connectionState.rawValue), timeout: \(timeout)")
-        return try await self.connectionAndState.hsmsConnectionStateUpdateNotifier.until(connectionState, timeout: timeout)
+        return try await notifier.until(connectionState, timeout: timeout)
     }
     
     @discardableResult
     public func untilNot(connectionState: HSMSConnectionState, timeout: Duration) async throws -> Bool {
+        let notifier = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier }
         Logger.hsmsConnectionState.notice("wait until NOT HSMS-Connection-state: \(connectionState.rawValue), timeout: \(timeout)")
-        return try await self.connectionAndState.hsmsConnectionStateUpdateNotifier.untilNot(connectionState, timeout: timeout)
+        return try await notifier.untilNot(connectionState, timeout: timeout)
     }
     
     // MARK: - SECSMessageReceivable
-
+    
+//    private let _didReceivePrimaryDataSECSMessage = Mutex<(@Sendable (any SECSMessage) -> Void)?>(nil)
+    private let _didReceivePrimaryDataSECSMessage = MutexConsumerWrapper<any SECSMessage>()
+    
     public var didReceivePrimaryDataSECSMessage: ((any SECSMessage) -> Void)? {
-        get {
-            return self._didReceivePrimaryDataSECSMessage
-        }
-        set {
-            self._didReceivePrimaryDataSECSMessage = newValue
-        }
+        get { self._didReceivePrimaryDataSECSMessage.consumer }
+        set { self._didReceivePrimaryDataSECSMessage.consumer = newValue }
     }
     
     // MARK: - HSMSMessageSendable
@@ -222,14 +227,16 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
     }
     
     private func interSendAndAwaitResponse(message: HSMSMessage) async throws -> HSMSMessage? {
-        guard let connection = await self.connectionAndState.connection else {
+        let connection = self.connectionAndState.withLock { $0.connection }
+        guard let connection = connection else {
             throw HSMSSendError.sendFailedByNotConnected(message: message)
         }
         return try await self.hsmsMessageTransactor!().sendAndAwaitResponse(message: message, connection: connection)
     }
     
     private func interSend(message: HSMSMessage) async throws {
-        guard let connection = await self.connectionAndState.connection else {
+        let connection = self.connectionAndState.withLock { $0.connection }
+        guard let connection = connection else {
             throw HSMSSendError.sendFailedByNotConnected(message: message)
         }
         try await self.hsmsMessageTransactor!().send(message: message, connection: connection)

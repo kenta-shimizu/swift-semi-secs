@@ -6,46 +6,59 @@
 //
 
 import Foundation
+import Synchronization
 
-internal actor HSMSLinktestTimer {
+internal final class HSMSLinktestTimer: Sendable {
     
-    private var started: Bool
-    private var shutdowned: Bool
-    
-    private let reset = StateUpdateNotifier<Bool>(state: false)
-    
-    internal nonisolated(unsafe) var autoLinktest: (() -> Bool)?
-    internal nonisolated(unsafe) var linktestDuration: (() -> Duration)?
-    internal nonisolated(unsafe) var linktest: (() -> Void)?
+    private let startAndShutdown = StartAndShutdown()
+    private let resetFlag = StateUpdateNotifier<Bool>(state: false)
     
     internal init() {
-        self.started = false
-        self.shutdowned = false
-        self.autoLinktest = nil
-        self.linktestDuration = nil
-        self.linktest = nil
+        // Nothing
     }
     
-    internal func start() async {
-        guard self.shutdowned == false else { return }
-        guard self.started == false else { return }
-        self.started = true
+    private let _autoLinktest = Mutex<(@Sendable () -> Bool)?>(nil)
+    
+    internal var autoLinktest : (@Sendable () -> Bool)? {
+        get { self._autoLinktest.withLock { $0 } }
+        set { self._autoLinktest.withLock { $0 = newValue } }
+    }
+    
+    private let _linktestDuration = Mutex<(@Sendable () -> Duration)?>(nil)
+    
+    internal var linktestDuration: (@Sendable () -> Duration)? {
+        get { self._linktestDuration.withLock { $0 } }
+        set { self._linktestDuration.withLock { $0 = newValue } }
+    }
+    
+    private let _linktest = Mutex<(@Sendable () -> Void)?>(nil)
+    
+    internal var linktest: (@Sendable () -> Void)? {
+        get { self._linktest.withLock { $0 } }
+        set { self._linktest.withLock { $0 = newValue } }
+    }
+    
+    internal func start() {
+        do {
+            try self.startAndShutdown.start()
+        }
+        catch {
+            fatalError("start error: \(error)")
+        }
         
         Task.detached {
             do {
                 while !Task.isCancelled {
-                    await self.reset.yield(false)
-                    guard let funcAutoLinktest = self.autoLinktest else { return }
-                    if funcAutoLinktest() {
-                        guard let funcLinktestDuration = self.linktestDuration else { return }
-                        let result = try await self.reset.until(true, timeout: funcLinktestDuration())
+                    self.resetFlag.yield(false)
+                    if self.autoLinktest!() {
+                        let result = try await self.resetFlag.until(true, timeout: self.linktestDuration!())
                         if result == false {
                             // timeout, do linktest.
                             self.linktest?()
                         }
                     } else {
                         // wait until reset
-                        try await self.reset.until(true)
+                        try await self.resetFlag.until(true)
                     }
                 }
             }
@@ -55,19 +68,14 @@ internal actor HSMSLinktestTimer {
         }
     }
     
-    internal func reset() async {
-        guard self.shutdowned == false else { return }
-        guard self.started == true else { return }
-        await self.reset.yield(true)
+    internal func reset() {
+        guard self.startAndShutdown.isRunning else { return }
+        self.resetFlag.yield(true)
     }
     
-    internal func shutdown() async {
-        guard self.shutdowned == false else { return }
-        self.shutdowned = true
-        await self.reset.shutdown()
-        self.autoLinktest = nil
-        self.linktestDuration = nil
-        self.linktest = nil
+    internal func shutdown() {
+        guard self.startAndShutdown.shutdown() == false else { return }
+        self.resetFlag.shutdown()
     }
     
 }

@@ -6,79 +6,77 @@
 //
 
 import Testing
+import Synchronization
 @testable import SemiSecs
 
 struct HSMSLinktestTimerTests {
 
     @Test func testAutolinktestFalse() async throws {
-        var count = 0
+        let count = Atomic<Int>(0)
         
         let timer = HSMSLinktestTimer()
         timer.autoLinktest = { return false }
         timer.linktestDuration = { return .seconds(0.50) }
-        timer.linktest = { count += 1 }
+        timer.linktest = { count.add(1, ordering: .relaxed) }
         
-        await timer.start()
+        timer.start()
         try await Task.sleep(for: .seconds(1.50))
-        await timer.shutdown()
+        timer.shutdown()
         
-        #expect(count == 0)
+        #expect(count.load(ordering: .relaxed) == 0)
     }
     
     @Test func testAutolinktestTrue() async throws {
-        var count = 0
+        let count = Atomic<Int>(0)
         
         let timer = HSMSLinktestTimer()
         timer.autoLinktest = { return true }
         timer.linktestDuration = { return .seconds(0.50) }
-        timer.linktest = { count += 1 }
+        timer.linktest = { count.add(1, ordering: .relaxed) }
         
-        await timer.start()
+        timer.start()
         try await Task.sleep(for: .seconds(1.70))
-        await timer.shutdown()
+        timer.shutdown()
         
-        #expect(count > 0)
+        #expect(count.load(ordering: .relaxed) > 0)
     }
     
     @Test func testAutolinktestTrueAndReset() async throws {
-        var count = 0
+        let count = Atomic<Int>(0)
         
         let timer = HSMSLinktestTimer()
         timer.autoLinktest = { return true }
         timer.linktestDuration = { return .seconds(1.00) }
-        timer.linktest = { count += 1 }
+        timer.linktest = { count.add(1, ordering: .relaxed) }
         
-        await timer.start()
+        timer.start()
         try await Task.sleep(for: .seconds(0.50))
-        await timer.reset()
+        timer.reset()
         try await Task.sleep(for: .seconds(0.50))
-        await timer.reset()
+        timer.reset()
         try await Task.sleep(for: .seconds(0.50))
-        await timer.reset()
+        timer.reset()
         try await Task.sleep(for: .seconds(0.50))
-        await timer.reset()
+        timer.reset()
         try await Task.sleep(for: .seconds(1.50))
-        await timer.shutdown()
+        timer.shutdown()
         
-        #expect(count > 0)
-        #expect(count < 3)
+        #expect(count.load(ordering: .relaxed) > 0)
+        #expect(count.load(ordering: .relaxed) < 3)
     }
     
     @Test func testAutolinktestCoverage() async throws {
-        var count = 0
+        let count = Atomic<Int>(0)
         
         let timer = HSMSLinktestTimer()
         timer.autoLinktest = { return true }
         timer.linktestDuration = { return .seconds(0.100) }
-        timer.linktest = { count += 1 }
+        timer.linktest = { count.add(1, ordering: .relaxed) }
         
-        await timer.reset()
-        await timer.start()
-        await timer.start()
-        await timer.shutdown()
-        await timer.reset()
-        await timer.start()
-        await timer.shutdown()
+        timer.reset()
+        timer.start()
+        timer.shutdown()
+        timer.shutdown()
         
     }
     
