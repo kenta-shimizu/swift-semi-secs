@@ -111,7 +111,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     private let session = HSMSSession()
     private let transactor = HSMSMessageTransactor()
     private let startAndShutdown = StartAndShutdown()
-    private let (shutdownStream, shutdownContinuation) = AsyncStream.makeStream(of: Void.self)
     private let (receiveWholeHSMSMessageStream, receiveWholeHSMSMessageContinuation) = AsyncStream.makeStream(of: HSMSMessageAndNWConnection.self)
     private let (networkEventStream, networkEventContinuation) = AsyncStream.makeStream(of: HSMSNetworkEvent.self)
     
@@ -123,6 +122,16 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     public var config: HSMSSSCommunicatorConfig {
         get { self._config }
     }
+    
+    private let _currentHSMSConnectionMode = Mutex<HSMSConnectionMode>(.passive)
+    
+    /// current running HSMSConnectionMode
+    private var currentHSMSConnectionMode: HSMSConnectionMode {
+        get { self._currentHSMSConnectionMode.withLock { $0 } }
+        set { self._currentHSMSConnectionMode.withLock { $0 = newValue } }
+    }
+    
+    // MARK: -
     
     /// Create HSMS-SS communicator instance.
     public init() {
@@ -205,7 +214,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             guard let self = self else { return }
             let stream = self.transactor.didReceiveMessageStream()
             for await pair in stream {
-                switch self.config.connectionMode {
+                switch self.currentHSMSConnectionMode {
                 case .active:
                     await self.session.receiveAsHSMSSSActive(message: pair.message, connection: pair.connection)
                 case .passive:
@@ -238,6 +247,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             Logger.communicator.debug("receiveWholeHSMSMessageStream finished.")
         }
         
+        // Main task
         Task { [weak self] in
             guard let self = self else { return }
             
@@ -247,7 +257,9 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 guard let self = self else { return }
                 do {
                     while !Task.isCancelled {
-                        switch self.config.connectionMode {
+                        let mode = self.config.connectionMode
+                        self.currentHSMSConnectionMode = mode
+                        switch mode {
                         case .active:
                             Logger.communicator.notice("HSMS-SS Active perform start.")
                             try await self.performActive(queue: queue)
@@ -284,18 +296,12 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 }
             }
             
-            // waiting until shutdown called.
-            for await _ in self.shutdownStream {
-            }
+            // await until shutdown called.
+            try? await self.startAndShutdown.untilShutdown()
             task.cancel()
-            
-            self.startAndShutdown.shutdown()
             
             self.networkEventContinuation.yield(.shutdown)
             self.networkEventContinuation.finish()
-            self.receiveWholeHSMSMessageContinuation.finish()
-            self.transactor.shutdown()
-            self.session.shutdown()
             
             Logger.communicator.debug("start-task finished.")
         }
@@ -303,8 +309,12 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     public func shutdown() {
         guard self.startAndShutdown.shutdown() == false else { return }
+        
         Logger.communicator.debug("shutdown called.")
-        self.shutdownContinuation.finish()
+        
+        self.receiveWholeHSMSMessageContinuation.finish()
+        self.transactor.shutdown()
+        self.session.shutdown()
     }
     
     /// Linktest, Returns true if linktest success, otherwise false.
@@ -449,7 +459,9 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             fatalError("NWEndpoint.Port: \(port)")
         }
         
+        // NWConnection
         let connection = NWConnection(host: nwIpAddress, port: nwPort, using: .tcp)
+        // HSMSMessage Pipeline
         let pipeline = self.newPipeline(connection: connection)
         
         defer {
@@ -462,6 +474,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
         do {
             self.networkEventContinuation.yield(.activeConnectStart(ipAddress: ipAddress, port: port))
             
+            // start connection
             try await connection.connect(queue: queue)
             
             self.networkEventContinuation.yield(.activeConnectSuccess(ipAddress: ipAddress, port: port))
@@ -473,8 +486,13 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 Logger.communicator.fault("NWConnection already setted.")
                 fatalError("NWConnection already setted.")
             }
-
+            
+            // LinktestTimer
             let linktestTimer = self.newLinktestTimer()
+            
+            defer {
+                linktestTimer.shutdown()
+            }
             
             await withTaskGroup(of: Void.self) { group in
                 // HSMS-Message pipeline
@@ -512,7 +530,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                     Logger.communicator.debug("NWConnection.dataStream finished.")
                 }
                 
-                // session-state
+                // Main task
                 group.addTask { [weak self] in
                     guard let self = self else { return }
                     do {
@@ -544,6 +562,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         }
                         linktestTimer.start()
                         
+                        // Await until NOT .selected (unset)
                         let notifier = self.session.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier }
                         try await notifier.untilNot(.selected)
                     }
@@ -557,7 +576,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                 
                 await group.next()
                 group.cancelAll()
-                linktestTimer.shutdown()
                 
                 self.session.connectionAndState.withLock {
                     $0.unset()
@@ -621,11 +639,17 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             return
         }
         
+        // HSMSMessage Pipeline
         let pipeline = self.newPipeline(connection: connection)
+        
+        defer {
+            pipeline.shutdown()
+        }
         
         do {
             self.networkEventContinuation.yield(.passiveAcceptStart(ipAddress: ipAddress, port: port))
             
+            // start NWConnection
             try await connection.connect(queue: queue)
             
             self.networkEventContinuation.yield(.passiveAcceptSuccess(ipAddress: ipAddress, port: port))
@@ -648,12 +672,15 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                     Logger.communicator.debug("NWConnection.dataStream finished.")
                 }
                 
-                // session-state
+                // Main task
                 group.addTask { [weak self] in
                     guard let self = self else { return }
                     
                     let pipelineStream = pipeline.hsmsMessageAndNWConnectionStream()
                     
+                    // =========================================
+                    // 1. before .selected
+                    // =========================================
                     do {
                         guard let firstRequestResult = try await pipelineStream.poll(timeout: self.config.timeout.t7) else {
                             Logger.communicator.error("HSMS-SS-Passive Timeout-T7")
@@ -667,17 +694,19 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             switch pair.message.messageType {
                             case .selectRequest:
                                 // accept type
-                                break
+                                break   // success, to next
                                 
                             case .selectResponse, .deselectResponse, .linktestResponse:
                                 // reject not-open-transaction
                                 let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .transactionNotOpen, byte2: pair.message.header10Bytes[5])
                                 try await self.transactor.send(message: responseMessage, connection: pair.connection)
-                                return
+                                
+                                return  // failed. aborting.
                                 
                             case .rejectRequest, .separateRequest:
                                 // ignore type
-                                return
+                                
+                                return  // failed. aborting
                                 
                             default:
                                 // reject not-support-type
@@ -688,7 +717,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                                     let responseMessage = self.messageBuilder.buildRejectRequest(referenceMessage: pair.message, rejectReason: .notSupportTypeP, byte2: pair.message.header10Bytes[4])
                                     try await self.transactor.send(message: responseMessage, connection: pair.connection)
                                 }
-                                return
+                                
+                                return  // failed. aborting.
                             }
                             
                             let setConnectionAndStateResult = self.session.connectionAndState.withLock {
@@ -699,7 +729,8 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                                 
                                 let responseMessage = self.messageBuilder.buildSelectResponse(selectRequest: pair.message, selectStatus: .alreadyUsed)
                                 try await self.transactor.send(message: responseMessage, connection: pair.connection)
-                                return
+                                
+                                return  // failed. aborting.
                             }
                             
                             // success selected.
@@ -727,7 +758,14 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         return
                     }
                     
+                    // =========================================
+                    // 2. after .selected
+                    // =========================================
                     let linktestTimer = self.newLinktestTimer()
+                    
+                    defer {
+                        linktestTimer.shutdown()
+                    }
                     
                     await withTaskGroup(of: Void.self) { innerGroup in
                         // HSMS-Message pipeline
@@ -746,23 +784,24 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                             Logger.communicator.debug("pipeline.hsmsMessageAndNWConnectionStream finished.")
                         }
                         
-                        // inner-session-state
+                        // Main task
                         innerGroup.addTask {
-                            do {
-                                // Linktest
-                                linktestTimer.linktest = { [weak self] in
-                                    guard let self = self else { return }
-                                    Task {
-                                        guard await self.linktest() else {
-                                            self.session.connectionAndState.withLock {
-                                                $0.unset()
-                                            }
-                                            return
+                            // Linktest
+                            linktestTimer.linktest = { [weak self] in
+                                guard let self = self else { return }
+                                Task {
+                                    guard await self.linktest() else {
+                                        self.session.connectionAndState.withLock {
+                                            $0.unset()
                                         }
+                                        return
                                     }
                                 }
-                                linktestTimer.start()
-                                
+                            }
+                            linktestTimer.start()
+                            
+                            do {
+                                // Await until .notConnected (unset)
                                 let notifier = self.session.connectionAndState.withLock {
                                     $0.hsmsConnectionStateUpdateNotifier
                                 }
@@ -778,7 +817,6 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
                         
                         await innerGroup.next()
                         innerGroup.cancelAll()
-                        linktestTimer.shutdown()
                         
                         self.session.connectionAndState.withLock {
                             $0.unset()
@@ -798,25 +836,26 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             
             Logger.nwConnection.error("\(error)")
         }
-        
-        pipeline.shutdown()
     }
     
     // MARK: -
     
     private func newPipeline(connection: NWConnection) -> HSMSMessagePipeline {
         let instance = HSMSMessagePipeline(connection: connection)
+        
         instance.timeoutT8 = { [weak self] in
             guard let self = self else {
                 return .seconds(6.0)
             }
             return self.config.timeout.t8
         }
+        
         return instance
     }
     
     private func newLinktestTimer() -> HSMSLinktestTimer {
         let instance = HSMSLinktestTimer()
+        
         instance.autoLinktest = { [weak self] in
             guard let self = self else {
                 return false
@@ -829,6 +868,7 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
             }
             return self.config.linktestDuration
         }
+        
         return instance
     }
 

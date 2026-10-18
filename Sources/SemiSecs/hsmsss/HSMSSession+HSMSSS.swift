@@ -12,13 +12,13 @@ import Network
 extension HSMSSession {
     
     internal func receiveAsHSMSSSActive(message: HSMSMessage, connection: NWConnection) async {
+        
+        let (sessionConnection, sessionState) = self.connectionAndState.withLock { $0.bothValue }
+        
         // check equal NWConnection
-        let sessionConnection = self.connectionAndState.withLock { $0.connection }
         guard let sessionConnection = sessionConnection else { return }
         guard connection === sessionConnection else { return }
-        
         // check state
-        let sessionState = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier.lastState }
         guard sessionState != .notConnected else { return }
         
         do {
@@ -67,13 +67,13 @@ extension HSMSSession {
     }
     
     internal func receiveAsHSMSSSPassive(message: HSMSMessage, connection: NWConnection) async {
+        
+        let (sessionConnection, sessionState) = self.connectionAndState.withLock { $0.bothValue }
+        
         // check equal NWConnection
-        let sessionConnection = self.connectionAndState.withLock { $0.connection }
         guard let sessionConnection = sessionConnection else { return }
         guard connection === sessionConnection else { return }
-        
         // check state
-        let sessionState = self.connectionAndState.withLock { $0.hsmsConnectionStateUpdateNotifier.lastState }
         guard sessionState == .selected else { return }
         
         do {

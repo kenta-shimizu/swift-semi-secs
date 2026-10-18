@@ -30,6 +30,11 @@ public final class  HSMSSession: HSMSMessageSendable, SECSMessageReceivable, HSM
             self.connection = nil
         }
         
+        /// NWConnection and HSMSConnectionState getter.
+        internal var bothValue: (connection: NWConnection?, state: HSMSConnectionState) {
+            get { (self.connection , self.hsmsConnectionStateUpdateNotifier.lastState) }
+        }
+        
         internal mutating func shutdown() {
             self.connection = nil
             self.hsmsConnectionStateUpdateNotifier.shutdown()

@@ -39,10 +39,10 @@ internal final class StartAndShutdown: Sendable {
         case shutdown
     }
     
-    private let state = Mutex<StartAndShutdownState>(.standby)
-    
+    private let stateNotifier: Mutex<StateUpdateNotifier<StartAndShutdownState>>
+
     internal init() {
-        // Nothing
+        self.stateNotifier = Mutex<StateUpdateNotifier<StartAndShutdownState>>(StateUpdateNotifier<StartAndShutdownState>(state: .standby))
     }
     
     /// Mark running, throws if already started or shutdown.
@@ -51,10 +51,10 @@ internal final class StartAndShutdown: Sendable {
     ///   - `StartAndShutdownError.alreadyShutdowned`: if already shutdown.
     ///   - `StartAndShutdownError.alreadyStarted`:  if already started.
     internal func start() throws {
-        try self.state.withLock {
-            switch $0 {
+        try self.stateNotifier.withLock {
+            switch $0.lastState {
             case .standby:
-                $0 = .running
+                $0.yield(.running)
             case .running:
                 throw StartAndShutdownError.alreadyStarted
             case .shutdown:
@@ -68,10 +68,11 @@ internal final class StartAndShutdown: Sendable {
     /// - Returns: true if already shutdown, otherwise false.
     @discardableResult
     internal func shutdown() -> Bool {
-        self.state.withLock {
-            switch $0 {
+        self.stateNotifier.withLock {
+            switch $0.lastState {
             case .standby, .running:
-                $0 = .shutdown
+                $0.yield(.shutdown)
+                $0.shutdown()
                 return false
             case .shutdown:
                 return true
@@ -81,9 +82,18 @@ internal final class StartAndShutdown: Sendable {
     
     /// isRunning
     internal var isRunning: Bool {
-        self.state.withLock {
-            return $0 == .running
+        self.stateNotifier.withLock {
+            return $0.lastState == .running
         }
+    }
+    
+    /// Await until shutdown.
+    ///
+    /// - Throws:
+    ///   - `CancellationError`: if already shutdown.
+    internal func untilShutdown() async throws {
+        let notifier = self.stateNotifier.withLock { $0 }
+        try await notifier.until(.shutdown)
     }
     
 }
