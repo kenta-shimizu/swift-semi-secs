@@ -28,6 +28,7 @@ public extension HSMSMessageDecodable {
     
 }
 
+/// HSMS Message decoder
 public final class HSMSMessageDecoder: HSMSMessageDecodable, Sendable {
     
     public  static let shared = HSMSMessageDecoder()

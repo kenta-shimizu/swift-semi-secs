@@ -229,29 +229,40 @@ public struct HSMSMessage: SECSMessage {
         
     }
     
-    
     private let _header10Bytes: Data
     private let _secs2Body: (any SECS2BodyProvider)?
+    private let _count: Int
     
     internal init(header10Bytes: Data, secs2Body:
     (any SECS2BodyProvider)?) {
+        let header10BytesCount = header10Bytes.count
+        guard header10BytesCount == 10 else {
+            fatalError("header10Bytes.count is not 10")
+        }
+        
+        let count = header10BytesCount + (secs2Body?.data.count ?? 0)
+        guard count <= 0x00000000FFFFFFFF else {
+            fatalError("length bytes overflow")
+        }
+        
         self._header10Bytes = header10Bytes
         self._secs2Body = secs2Body
+        self._count = count
     }
     
     public var data: Data {
-        let r = self._header10Bytes + (self._secs2Body?.data ?? Data())
-        let i = r.count
-        return Data([
-            UInt8((i >> 24) & 0x000000FF),
-            UInt8((i >> 16) & 0x000000FF),
-            UInt8((i >> 8) & 0x000000FF),
-            UInt8(i & 0x000000FF),
-        ]) + r
+        get {
+            return Data([
+                UInt8((self._count >> 24) & 0x000000FF),
+                UInt8((self._count >> 16) & 0x000000FF),
+                UInt8((self._count >> 8) & 0x000000FF),
+                UInt8(self._count & 0x000000FF),
+            ]) + self._header10Bytes + (self._secs2Body?.data ?? Data())
+        }
     }
     
     public var count: Int {
-        get { self._header10Bytes.count + (self._secs2Body?.data.count ?? 0) }
+        get { self._count }
     }
     
     public var secs2Body: (any SECS2BodyProvider)? {

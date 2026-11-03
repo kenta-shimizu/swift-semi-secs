@@ -267,6 +267,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - list: The  SECS-II Body Array
     public init(list: [any SECS2BodyProvider]) {
+        guard list.count <= 0x00FFFFFF else {
+            fatalError("SECS2Body List overflow")
+        }
         self.init(list: list, data: SECS2BodyEncoder.shared.encode(list: list))
     }
     
@@ -279,6 +282,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - binary: The Data
     public init(binary: Data) {
+        guard binary.count <= 0x00FFFFFF else {
+            fatalError("SECS2Body Binary overflow")
+        }
         self.init(binary: binary, data: SECS2BodyEncoder.shared.encode(binary: binary))
     }
     
@@ -291,6 +297,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - boolean: The Bool Array
     public init(boolean: [Bool]) {
+        guard boolean.count <= 0x00FFFFFF else {
+            fatalError("SECS2Body Boolean overflow")
+        }
         self.init(boolean: boolean, data: SECS2BodyEncoder.shared.encode(boolean: boolean))
     }
     
@@ -323,6 +332,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - int1: The Int8 Array
     public init(int1: [Int8]) {
+        guard int1.count <= 0x00FFFFFF else {
+            fatalError("SECS2Body Int1 overflow")
+        }
         self.init(int1: int1, data: SECS2BodyEncoder.shared.encode(int1: int1))
     }
     
@@ -335,6 +347,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - int2: The Int16 Array
     public init(int2: [Int16]) {
+        guard int2.count <= 0x007FFFFF else {
+            fatalError("SECS2Body Int2 overflow")
+        }
         self.init(int2: int2, data: SECS2BodyEncoder.shared.encode(int2: int2))
     }
     
@@ -347,6 +362,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - int4: The Int32 Array
     public init(int4: [Int32]) {
+        guard int4.count <= 0x003FFFFF else {
+            fatalError("SECS2Body Int4 overflow")
+        }
         self.init(int4: int4, data: SECS2BodyEncoder.shared.encode(int4: int4))
     }
     
@@ -359,6 +377,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - int8: The Int64 Array
     public init(int8: [Int64]) {
+        guard int8.count <= 0x001FFFFF else {
+            fatalError("SECS2Body Int8 overflow")
+        }
         self.init(int8: int8, data: SECS2BodyEncoder.shared.encode(int8: int8))
     }
     
@@ -371,6 +392,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - uint1: The UInt8 Array
     public init(uint1: [UInt8]) {
+        guard uint1.count <= 0x00FFFFFF else {
+            fatalError("SECS2Body Uint1 overflow")
+        }
         self.init(uint1: uint1, data: SECS2BodyEncoder.shared.encode(uint1: uint1))
     }
     
@@ -383,6 +407,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - uint2: The UInt16 Array
     public init(uint2: [UInt16]) {
+        guard uint2.count <= 0x007FFFFF else {
+            fatalError("SECS2Body Uint2 overflow")
+        }
         self.init(uint2: uint2, data: SECS2BodyEncoder.shared.encode(uint2: uint2))
     }
     
@@ -395,6 +422,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - uint4: The UInt32 Array
     public init(uint4: [UInt32]) {
+        guard uint4.count <= 0x003FFFFF else {
+            fatalError("SECS2Body Uint4 overflow")
+        }
         self.init(uint4: uint4, data: SECS2BodyEncoder.shared.encode(uint4: uint4))
     }
     
@@ -407,6 +437,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - uint8: The UInt64 Array
     public init(uint8: [UInt64]) {
+        guard uint8.count <= 0x001FFFFF else {
+            fatalError("SECS2Body Uint8 overflow")
+        }
         self.init(uint8: uint8, data: SECS2BodyEncoder.shared.encode(uint8: uint8))
     }
     
@@ -419,6 +452,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - float4: The Float Array
     public init(float4: [Float]) {
+        guard float4.count <= 0x003FFFFF else {
+            fatalError("SECS2Body Float4 overflow")
+        }
         self.init(float4: float4, data: SECS2BodyEncoder.shared.encode(float4: float4))
     }
     
@@ -431,6 +467,9 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     /// - Parameters:
     ///   - float8: The Double Array
     public init(float8: [Double]) {
+        guard float8.count <= 0x001FFFFF else {
+            fatalError("SECS2Body Float8 overflow")
+        }
         self.init(float8: float8, data: SECS2BodyEncoder.shared.encode(float8: float8))
     }
     
@@ -448,7 +487,7 @@ public struct SECS2Body: SECS2BodyProvider, Sendable {
     
 }
 
-// MARK: Inner
+// MARK: - Inner
 
 fileprivate class SECS2BodyInnerBase: Sequence, @unchecked Sendable {
     
@@ -978,8 +1017,21 @@ fileprivate final class SECS2BodyInnerError: SECS2BodyInnerBase, @unchecked Send
         super.init(data: error, secs2BodyItemType: .error)
     }
     
+    fileprivate override var count: Int {
+        get {
+            return 0
+        }
+    }
+    
     fileprivate override func smlString(indent: String = "") -> String {
         let type = self._secs2BodyItemType.smlString
         return "\(indent)<\(type) [?] >"
     }
+    
+    fileprivate override var value: Any? {
+        get {
+            return nil
+        }
+    }
+    
 }
