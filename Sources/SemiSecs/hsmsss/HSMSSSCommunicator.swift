@@ -14,95 +14,93 @@ import Synchronization
 public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SECSMessageReceivable, HSMSConnectionStateDetectable, Sendable {
     
     /// HSMS-SS communicator config.
-    public final class HSMSSSCommunicatorConfig: HSMSCommunicatorConfig, Sendable {
+    public struct HSMSSSCommunicatorConfig: HSMSCommunicatorConfig, Sendable {
         
-        private let _sessionId: Mutex<UInt16>
-        private let _isEquipment: Mutex<Bool>
-        private let _timeout: SECSCommunicatorTimeoutConfig
-        private let _connectionMode: Mutex<HSMSConnectionMode>
-        private let _ipAddress: Mutex<String>
-        private let _port: Mutex<UInt16>
-        private let _rebindDuration: Mutex<Duration>
-        private let _doLinktest: Mutex<Bool>
-        private let _linktestDuration: Mutex<Duration>
+        private final class Inner: Sendable {
+            fileprivate let sessionId = Mutex<UInt16>(10)
+            fileprivate let isEquipment = Mutex<Bool>(true)
+            fileprivate let timeout = Mutex<SECSCommunicatorTimeoutConfig>(SECSCommunicatorTimeoutConfig())
+            fileprivate let connectionMode = Mutex<HSMSConnectionMode>(.passive)
+            fileprivate let ipAddress = Mutex<String>("")
+            fileprivate let port = Mutex<UInt16>(5000)
+            fileprivate let rebindDuration = Mutex<Duration>(.seconds(10.0))
+            fileprivate let doLinktest = Mutex<Bool>(false)
+            fileprivate let linktestDuration = Mutex<Duration>(.seconds(120.0))
+        }
         
-        internal init() {
-            self._sessionId = Mutex<UInt16>(10)
-            self._isEquipment = Mutex<Bool>(true)
-            self._timeout = SECSCommunicatorTimeoutConfig()
-            self._connectionMode = Mutex<HSMSConnectionMode>(.passive)
-            self._ipAddress = Mutex<String>("")
-            self._port = Mutex<UInt16>(5000)
-            self._rebindDuration = Mutex<Duration>(.seconds(10.0))
-            self._doLinktest = Mutex<Bool>(false)
-            self._linktestDuration = Mutex<Duration>(.seconds(120.0))
+        private let inner = Inner()
+        
+        public init() {
+            // Nothing
         }
         
         /// Session-ID.
         public var sessionId: UInt16 {
             get {
-                return self._sessionId.withLock { $0 }
+                return self.inner.sessionId.withLock { $0 }
             }
             set {
                 guard newValue <= 0x7FFF else {
                     fatalError("Session-ID is 0...0x7FFF")
                 }
-                self._sessionId.withLock { $0 = newValue }
+                self.inner.sessionId.withLock { $0 = newValue }
             }
         }
         
         public var isEquipment: Bool {
-            get { self._isEquipment.withLock { $0 } }
-            set { self._isEquipment.withLock { $0 = newValue } }
+            get { self.inner.isEquipment.withLock { $0 } }
+            set { self.inner.isEquipment.withLock { $0 = newValue } }
         }
         
         public var timeout: SECSCommunicatorTimeoutConfig {
-            get { self._timeout }
+            get { self.inner.timeout.withLock{ $0 } }
+            set { self.inner.timeout.withLock{ $0 = newValue } }
         }
         
         public var connectionMode: HSMSConnectionMode {
-            get { self._connectionMode.withLock { $0 } }
-            set { self._connectionMode.withLock { $0 = newValue } }
+            get { self.inner.connectionMode.withLock { $0 } }
+            set { self.inner.connectionMode.withLock { $0 = newValue } }
         }
         
         public var ipAddress: String {
-            get { self._ipAddress.withLock { $0 } }
-            set { self._ipAddress.withLock { $0 = newValue } }
+            get { self.inner.ipAddress.withLock { $0 } }
+            set { self.inner.ipAddress.withLock { $0 = newValue } }
         }
         
         public var port: UInt16 {
-            get { self._port.withLock { $0 } }
-            set { self._port.withLock { $0 = newValue } }
+            get { self.inner.port.withLock { $0 } }
+            set { self.inner.port.withLock { $0 = newValue } }
         }
         
         public var rebindDuration: Duration {
             get {
-                return self._rebindDuration.withLock { $0 }
+                return self.inner.rebindDuration.withLock { $0 }
             }
             set {
                 guard newValue > .zero else {
                     fatalError("rebindDuration set value >0.0")
                 }
-                self._rebindDuration.withLock { $0 = newValue }
+                self.inner.rebindDuration.withLock { $0 = newValue }
             }
         }
         
         public var autoLinktest: Bool {
-            get { self._doLinktest.withLock { $0 } }
-            set { self._doLinktest.withLock { $0 = newValue } }
+            get { self.inner.doLinktest.withLock { $0 } }
+            set { self.inner.doLinktest.withLock { $0 = newValue } }
         }
         
         public var linktestDuration: Duration {
             get {
-                return self._linktestDuration.withLock { $0 }
+                return self.inner.linktestDuration.withLock { $0 }
             }
             set {
                 guard newValue > .zero else {
                     fatalError("linktestTimeDuration set value >0.0")
                 }
-                self._linktestDuration.withLock { $0 = newValue }
+                self.inner.linktestDuration.withLock { $0 = newValue }
             }
         }
+
     }
     
     // MARK: - let
@@ -116,11 +114,12 @@ public final class HSMSSSCommunicator: HSMSCommunicator, HSMSMessageSendable, SE
     
     // MARK: - var
     
-    private let _config = HSMSSSCommunicatorConfig()
+    private let _config = Mutex<HSMSSSCommunicatorConfig>(HSMSSSCommunicatorConfig())
     
     /// Config
     public var config: HSMSSSCommunicatorConfig {
-        get { self._config }
+        get { self._config.withLock { $0 } }
+        set { self._config.withLock { $0 = newValue } }
     }
     
     private let _currentHSMSConnectionMode = Mutex<HSMSConnectionMode>(.passive)

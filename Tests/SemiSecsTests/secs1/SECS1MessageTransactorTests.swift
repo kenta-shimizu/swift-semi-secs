@@ -30,7 +30,7 @@ struct SECS1MessageTransactorTests {
         return transactor
     }
     
-    @Test func testSimple() async throws {
+    @Test func testSuccess() async throws {
         
         let equipMessage1 = equipMessageBuilder().buildPrimaryData(stream: 5, function: 1, wbit: false)
         let equipMessage2 = equipMessageBuilder().buildPrimaryData(stream: 1, function: 1, wbit: true)

@@ -49,8 +49,8 @@ struct SECS1CircuitTests {
         circuit.retry = { 3 }
         return circuit
     }
-
-    @Test func testNormal() async throws {
+    
+    @Test func testSuccess() async throws {
         
         let equipMessageBuilder = equipMessageBuilder()
         let equipTransactor = transactor(timeoutT3: .seconds(45.0))
