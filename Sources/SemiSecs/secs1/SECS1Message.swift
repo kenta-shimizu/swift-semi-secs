@@ -139,7 +139,7 @@ public struct SECS1Message: SECSMessage, Sendable {
     private static let lineSeparator: String = "\n"
     private static let endMessage = "."
     
-    private var header10BytesString: String {
+    internal var header10BytesString: String {
         get {
             String(format: "[%02X %02X|%02X %02X|%02X %02X|%02X %02X %02X %02X]",
                    self.header10Bytes[0],

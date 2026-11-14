@@ -16,7 +16,6 @@ internal final class SECS1RecweiveByteAndSendMessageQueue: Sendable {
         
         private var receiveByteQueue: [UInt8]
         private var receiveByteContinuations: [AsyncStream<Int>.Continuation]
-        
         private var sendSECS1MessageQueue: [SECS1Message]
         private var sendSECS1MessageContinuations: [AsyncStream<Int>.Continuation]
         

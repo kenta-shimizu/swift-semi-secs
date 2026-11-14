@@ -190,6 +190,7 @@ public protocol HSMSCommunicatorConfig: SECSCommunicatorConfig {
     
 }
 
+/// HSMSCommunicator
 public protocol HSMSCommunicator: SECSCommunicator, HSMSMessageReceivable {
     
 }
